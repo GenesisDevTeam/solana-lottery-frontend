@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchor, ids } from "@/lib/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -11,8 +11,11 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useConnection } from "@solana/wallet-adapter-react";
 
 export default function Home() {
+  const { connection } = useConnection();
   const { lottery, watcher } = useAnchor();
   const [loading, setLoading] = useState(false);
   const [roundId, setRoundId] = useState<number | null>(null);
@@ -23,6 +26,7 @@ export default function Home() {
   const [referrer, setReferrer] = useState<string | null>(null);
   const [refCodeHex, setRefCodeHex] = useState<string | null>(null);
   const [watcherDefaults, setWatcherDefaults] = useState<{ bps: number; limit: string } | null>(null);
+  const [walletBalance, setWalletBalance] = useState<string>("-");
 
   useEffect(() => {
     const run = async () => {
@@ -38,6 +42,11 @@ export default function Home() {
           const round = await lottery.account.round.fetch(roundPda);
           setRoundPot((round.pot as anchor.BN).toString());
           setTicketPrice((round.ticketPrice as anchor.BN).toString());
+        }
+        // баланс кошелька
+        if (lottery.provider.publicKey) {
+          const lamports = await connection.getBalance(lottery.provider.publicKey);
+          setWalletBalance((lamports / LAMPORTS_PER_SOL).toFixed(5));
         }
         // реф. состояние
         if (watcher && lottery.provider.publicKey) {
@@ -69,15 +78,21 @@ export default function Home() {
       }
     };
     void run();
-  }, [lottery, watcher]);
+  }, [lottery, watcher, connection]);
 
   const buyDisabled = useMemo(() => !lottery || roundId === null || loading, [lottery, roundId, loading]);
 
   const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {}
+    try { await navigator.clipboard.writeText(text); } catch {}
   };
+
+  const totalToPay = useMemo(() => {
+    if (!ticketPrice) return "-";
+    const tp = Number(ticketPrice);
+    if (!tp || !Number.isFinite(tp)) return "-";
+    const lamports = tp * ticketCount;
+    return `${(lamports / LAMPORTS_PER_SOL).toFixed(6)} SOL`;
+  }, [ticketPrice, ticketCount]);
 
   const onBuy = async () => {
     if (!lottery || !watcher || roundId === null) return;
@@ -207,7 +222,7 @@ export default function Home() {
                 <Button className="px-2 py-1" onClick={() => copy("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")}>копировать</Button>
               </div>
               <div className="opacity-70">Fee balance (lamports): 0</div>
-              <div className="pt-2 border-t" />
+              <Separator className="my-2" />
               <div className="flex gap-4"><span className="opacity-70">Текущий раунд:</span><span>{roundId ?? "-"}</span></div>
               <div className="flex gap-4"><span className="opacity-70">Пот (lamports):</span><span>{roundPot}</span></div>
               <div className="flex gap-4"><span className="opacity-70">Цена билета (lamports):</span><span>{ticketPrice}</span></div>
@@ -226,6 +241,8 @@ export default function Home() {
                   <Input type="number" min={1} value={ticketCount} onChange={(e) => setTicketCount(Number(e.target.value))} />
                 </div>
               </div>
+              <div className="opacity-70 text-xs">Баланс кошелька: {walletBalance} SOL</div>
+              <div className="opacity-70 text-xs">Итого к оплате: {totalToPay}</div>
               <div>
                 <Button onClick={onBuy} disabled={buyDisabled}>Купить билеты</Button>
               </div>
