@@ -1,19 +1,11 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { Button as CButton, type ButtonProps as CButtonProps } from "@chakra-ui/react";
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
+export type ButtonProps = CButtonProps;
 
-export function Button({ className, ...props }: ButtonProps) {
+export function Button({ ...props }: ButtonProps) {
   return (
-    <button
-      className={cn(
-        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-        "focus:outline-none disabled:opacity-50 disabled:pointer-events-none",
-        "bg-black text-white hover:opacity-90 px-3 py-1.5",
-        className,
-      )}
-      {...props}
-    />
+    <CButton colorScheme="purple" variant="solid" {...props} />
   );
 }
 

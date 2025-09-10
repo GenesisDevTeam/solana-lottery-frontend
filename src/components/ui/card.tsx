@@ -1,16 +1,18 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { Box, Flex, Heading, type BoxProps, type FlexProps, type HeadingProps } from "@chakra-ui/react";
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-lg border p-4 bg-white/50", className)} {...props} />;
+export function Card(props: BoxProps) {
+  return (
+    <Box borderRadius="lg" borderWidth="1px" p={4} bg="blackAlpha.400" borderColor="whiteAlpha.200" {...props} />
+  );
 }
 
-export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-2 flex items-center justify-between", className)} {...props} />;
+export function CardHeader(props: FlexProps) {
+  return <Flex mb={2} align="center" justify="space-between" {...props} />;
 }
 
-export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("font-medium", className)} {...props} />;
+export function CardTitle(props: HeadingProps) {
+  return <Heading size="sm" color="whiteAlpha.900" {...props} />;
 }
 
 

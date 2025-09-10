@@ -1,8 +1,8 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { Text, type TextProps } from "@chakra-ui/react";
 
-export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("text-sm opacity-70", className)} {...props} />;
+export function Label(props: TextProps) {
+  return <Text as="label" fontSize="sm" opacity={0.7} {...props} />;
 }
 
 
