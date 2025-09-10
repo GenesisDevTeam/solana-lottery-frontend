@@ -7,6 +7,10 @@ import { useAnchor, ids } from "@/lib/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { WalletGate } from "@/components/WalletGate";
 import { explorerAddressUrl } from "../lib/utils";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Home() {
   const { lottery, watcher } = useAnchor();
@@ -35,7 +39,7 @@ export default function Home() {
           setRoundPot((round.pot as anchor.BN).toString());
           setTicketPrice((round.ticketPrice as anchor.BN).toString());
         }
-        // проверяем регистрацию пользователя в реф. системе и читаем детали
+        // реф. состояние
         if (watcher && lottery.provider.publicKey) {
           const [userRefPda] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), lottery.provider.publicKey.toBuffer()], watcher.programId);
           const userRef = await watcher.account.userReferral.fetchNullable(userRefPda);
@@ -51,7 +55,7 @@ export default function Home() {
             setRefCodeHex(null);
           }
         }
-        // дефолтные параметры партнёрки
+        // дефолты партнёрки
         if (watcher) {
           const [watcherStatePda] = PublicKey.findProgramAddressSync([Buffer.from("watcher_state")], watcher.programId);
           const wState = await watcher.account.watcherState.fetchNullable(watcherStatePda);
@@ -69,12 +73,17 @@ export default function Home() {
 
   const buyDisabled = useMemo(() => !lottery || roundId === null || loading, [lottery, roundId, loading]);
 
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {}
+  };
+
   const onBuy = async () => {
     if (!lottery || !watcher || roundId === null) return;
     try {
       setLoading(true);
       const [roundPda] = PublicKey.findProgramAddressSync([Buffer.from("round"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
-      // узнаем текущий purchase_index
       const round = await lottery.account.round.fetch(roundPda);
       const purchaseIndex = new anchor.BN((round.purchaseCount as unknown as anchor.BN).toString());
       const [purchasePda] = PublicKey.findProgramAddressSync([
@@ -83,13 +92,12 @@ export default function Home() {
         purchaseIndex.toArrayLike(Buffer, "le", 8),
       ], lottery.programId);
 
-      // PDA партнёрки (опционально)
+      // опциональная партнёрка
       const userPk = lottery.provider.publicKey!;
       const [watcherStatePda] = PublicKey.findProgramAddressSync([Buffer.from("watcher_state")], watcher.programId);
       const [userRefForPlayerPda] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), userPk.toBuffer()], watcher.programId);
       const userRef = await watcher.account.userReferral.fetchNullable(userRefForPlayerPda);
 
-      // Если нет регистрации, подставляем SystemProgram в реферальные аккаунты, чтобы CPI была пропущена в программе лотереи
       const accountsWhenNoReferral = {
         watcherState: anchor.web3.SystemProgram.programId,
         userRefForPlayer: anchor.web3.SystemProgram.programId,
@@ -168,59 +176,100 @@ export default function Home() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Solana Lottery</h1>
         <WalletMultiButton />
       </div>
       <WalletGate>
-        {/* Блок 1: Моя реф. информация */}
-        <div className="rounded-lg border p-4 space-y-2">
-          <div className="font-medium">Моя реф. информация</div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Статус:</span><span>{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Реферер:</span><span>{referrer ? <a className="underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}</a> : "-"}</span></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Код (hex):</span><span className="break-all">{refCodeHex ?? "-"}</span></div>
-          {registered === false && (
-            <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
-          )}
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Состояние контракта */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Состояние контракта</CardTitle>
+            </CardHeader>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="opacity-70">ID:</span>
+                <a className="underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">Explorer</a>
+                <Button className="px-2 py-1" onClick={() => copy(ids.lottery)}>копировать</Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="opacity-70">Owner:</span>
+                <span>FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb</span>
+                <a className="underline" href={explorerAddressUrl("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")} target="_blank" rel="noreferrer">Explorer</a>
+                <Button className="px-2 py-1" onClick={() => copy("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")}>копировать</Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="opacity-70">Admin:</span>
+                <span>FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb</span>
+                <a className="underline" href={explorerAddressUrl("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")} target="_blank" rel="noreferrer">Explorer</a>
+                <Button className="px-2 py-1" onClick={() => copy("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")}>копировать</Button>
+              </div>
+              <div className="opacity-70">Fee balance (lamports): 0</div>
+              <div className="pt-2 border-t" />
+              <div className="flex gap-4"><span className="opacity-70">Текущий раунд:</span><span>{roundId ?? "-"}</span></div>
+              <div className="flex gap-4"><span className="opacity-70">Пот (lamports):</span><span>{roundPot}</span></div>
+              <div className="flex gap-4"><span className="opacity-70">Цена билета (lamports):</span><span>{ticketPrice}</span></div>
+            </div>
+          </Card>
 
-        {/* Блок 2: Покупка билета */}
-        <div className="rounded-lg border p-4 space-y-3">
-          <div className="font-medium">Покупка билета</div>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min={1}
-              value={ticketCount}
-              onChange={(e) => setTicketCount(Number(e.target.value))}
-              className="border rounded px-2 py-1 w-28 bg-transparent"
-            />
-            <button
-              onClick={onBuy}
-              disabled={buyDisabled}
-              className="px-3 py-1.5 rounded bg-black text-white disabled:opacity-50"
-            >
-              {loading ? "Обработка..." : "Купить билеты"}
-            </button>
-          </div>
-        </div>
+          {/* Покупка билетов */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Покупка билетов</CardTitle>
+            </CardHeader>
+            <div className="space-y-3 text-sm">
+              <div>
+                <Label className="mb-1 block">Количество</Label>
+                <div className="max-w-[160px]">
+                  <Input type="number" min={1} value={ticketCount} onChange={(e) => setTicketCount(Number(e.target.value))} />
+                </div>
+              </div>
+              <div>
+                <Button onClick={onBuy} disabled={buyDisabled}>Купить билеты</Button>
+              </div>
+            </div>
+          </Card>
 
-        {/* Блок 3: Информация о лотерее */}
-        <div className="rounded-lg border p-4 space-y-2">
-          <div className="font-medium">Информация о лотерее</div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Program ID:</span><a className="underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">{ids.lottery}</a></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Текущий раунд:</span><span>{roundId ?? "-"}</span></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Пот (lamports):</span><span>{roundPot}</span></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Цена билета (lamports):</span><span>{ticketPrice}</span></div>
-        </div>
+          {/* Watcher (Referral) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Watcher (Referral)</CardTitle>
+            </CardHeader>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="opacity-70">ID:</span>
+                <a className="underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">Explorer</a>
+                <Button className="px-2 py-1" onClick={() => copy(ids.watcher)}>копировать</Button>
+              </div>
+              <div className="flex gap-4"><span className="opacity-70">Default profit bps:</span><span>{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
+              <div className="flex gap-4"><span className="opacity-70">Default daily reg. limit:</span><span>{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
+            </div>
+          </Card>
 
-        {/* Блок 4: Информация о партнёрке */}
-        <div className="rounded-lg border p-4 space-y-2">
-          <div className="font-medium">Информация о партнёрке</div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Program ID:</span><a className="underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">{ids.watcher}</a></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Default profit (bps):</span><span>{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
-          <div className="text-sm flex gap-4"><span className="opacity-70">Default referral limit:</span><span>{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
+          {/* Моя реф. информация */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Моя реф. информация</CardTitle>
+            </CardHeader>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-4"><span className="opacity-70">Статус:</span><span>{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="opacity-70">Referrer:</span>
+                <span>{referrer ? <a className="underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}</a> : "-"}</span>
+                {referrer && <Button className="px-2 py-1" onClick={() => copy(referrer!)}>копировать</Button>}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="opacity-70">Code hash (hex):</span>
+                <span className="break-all">{refCodeHex ?? "-"}</span>
+                {refCodeHex && <Button className="px-2 py-1" onClick={() => copy(refCodeHex!)}>копировать</Button>}
+              </div>
+              {registered === false && (
+                <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
+              )}
+            </div>
+          </Card>
         </div>
       </WalletGate>
     </div>
