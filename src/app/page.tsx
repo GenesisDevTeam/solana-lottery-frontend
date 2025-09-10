@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useConnection } from "@solana/wallet-adapter-react";
+import { IconButton } from "@/components/ui/icon-button";
+import { Copy, ExternalLink } from "lucide-react";
 
 export default function Home() {
   const { connection } = useConnection();
@@ -26,6 +28,9 @@ export default function Home() {
   const [referrer, setReferrer] = useState<string | null>(null);
   const [refCodeHex, setRefCodeHex] = useState<string | null>(null);
   const [watcherDefaults, setWatcherDefaults] = useState<{ bps: number; limit: string } | null>(null);
+  const [lotteryOwner, setLotteryOwner] = useState<string | null>(null);
+  const [lotteryAdmin, setLotteryAdmin] = useState<string | null>(null);
+  const [feeBalance, setFeeBalance] = useState<string>("-");
   const [walletBalance, setWalletBalance] = useState<string>("-");
 
   useEffect(() => {
@@ -35,6 +40,9 @@ export default function Home() {
         setLoading(true);
         const [lotteryStatePda] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("lottery_state")], lottery.programId);
         const state = await lottery.account.lotteryState.fetch(lotteryStatePda);
+        setLotteryOwner(state.owner.toBase58());
+        setLotteryAdmin(state.admin.toBase58());
+        setFeeBalance((state.feeBalance as anchor.BN).toString());
         const currentRoundId = state.latestRoundId.toNumber();
         setRoundId(currentRoundId);
         if (currentRoundId > 0) {
@@ -206,22 +214,22 @@ export default function Home() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="opacity-70">ID:</span>
-                <a className="underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">Explorer</a>
-                <Button className="px-2 py-1" onClick={() => copy(ids.lottery)}>копировать</Button>
+                <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>
+                <IconButton onClick={() => copy(ids.lottery)} aria-label="copy"><Copy size={14} /></IconButton>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="opacity-70">Owner:</span>
-                <span>FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb</span>
-                <a className="underline" href={explorerAddressUrl("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")} target="_blank" rel="noreferrer">Explorer</a>
-                <Button className="px-2 py-1" onClick={() => copy("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")}>копировать</Button>
+                <span className="break-all">{lotteryOwner ?? "-"}</span>
+                {lotteryOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                {lotteryOwner && <IconButton onClick={() => copy(lotteryOwner!)} aria-label="copy-owner"><Copy size={14} /></IconButton>}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="opacity-70">Admin:</span>
-                <span>FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb</span>
-                <a className="underline" href={explorerAddressUrl("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")} target="_blank" rel="noreferrer">Explorer</a>
-                <Button className="px-2 py-1" onClick={() => copy("FV1AtdSnciCMnXeYsD77Hg1PMYXgGVpiYqhDhGxB1Xgb")}>копировать</Button>
+                <span className="break-all">{lotteryAdmin ?? "-"}</span>
+                {lotteryAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                {lotteryAdmin && <IconButton onClick={() => copy(lotteryAdmin!)} aria-label="copy-admin"><Copy size={14} /></IconButton>}
               </div>
-              <div className="opacity-70">Fee balance (lamports): 0</div>
+              <div className="opacity-70">Fee balance (lamports): {feeBalance}</div>
               <Separator className="my-2" />
               <div className="flex gap-4"><span className="opacity-70">Текущий раунд:</span><span>{roundId ?? "-"}</span></div>
               <div className="flex gap-4"><span className="opacity-70">Пот (lamports):</span><span>{roundPot}</span></div>
@@ -257,8 +265,8 @@ export default function Home() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="opacity-70">ID:</span>
-                <a className="underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">Explorer</a>
-                <Button className="px-2 py-1" onClick={() => copy(ids.watcher)}>копировать</Button>
+                <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>
+                <IconButton onClick={() => copy(ids.watcher)} aria-label="copy"><Copy size={14} /></IconButton>
               </div>
               <div className="flex gap-4"><span className="opacity-70">Default profit bps:</span><span>{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
               <div className="flex gap-4"><span className="opacity-70">Default daily reg. limit:</span><span>{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
@@ -274,13 +282,13 @@ export default function Home() {
               <div className="flex gap-4"><span className="opacity-70">Статус:</span><span>{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="opacity-70">Referrer:</span>
-                <span>{referrer ? <a className="underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}</a> : "-"}</span>
-                {referrer && <Button className="px-2 py-1" onClick={() => copy(referrer!)}>копировать</Button>}
+                <span>{referrer ? <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}<ExternalLink size={14} /></a> : "-"}</span>
+                {referrer && <IconButton onClick={() => copy(referrer!)} aria-label="copy-ref"><Copy size={14} /></IconButton>}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="opacity-70">Code hash (hex):</span>
                 <span className="break-all">{refCodeHex ?? "-"}</span>
-                {refCodeHex && <Button className="px-2 py-1" onClick={() => copy(refCodeHex!)}>копировать</Button>}
+                {refCodeHex && <IconButton onClick={() => copy(refCodeHex!)} aria-label="copy-code"><Copy size={14} /></IconButton>}
               </div>
               {registered === false && (
                 <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
