@@ -1,0 +1,1857 @@
+{
+  "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf",
+  "metadata": {
+    "name": "watcher_referral",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Referral watcher program"
+  },
+  "instructions": [
+    {
+      "name": "generate_referral_code",
+      "discriminator": [
+        12,
+        100,
+        187,
+        67,
+        23,
+        63,
+        135,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "code_ref",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  100,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "code_index",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  100,
+                  101,
+                  95,
+                  104,
+                  97,
+                  115,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "code_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "code_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "admin",
+          "type": "pubkey"
+        },
+        {
+          "name": "signer",
+          "type": "pubkey"
+        },
+        {
+          "name": "lottery",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "preset_referral_percentage",
+      "discriminator": [
+        13,
+        197,
+        132,
+        18,
+        255,
+        51,
+        160,
+        22
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "referrer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "referrer",
+          "type": "pubkey"
+        },
+        {
+          "name": "percentage_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "register_with_referral",
+      "discriminator": [
+        225,
+        60,
+        154,
+        41,
+        165,
+        127,
+        133,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_ref",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  102
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "code_index",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  100,
+                  101,
+                  95,
+                  104,
+                  97,
+                  115,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "code_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "registration_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "code_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "code_index.owner",
+                "account": "CodeIndex"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "backend_signer",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "code_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_custom_limit",
+      "discriminator": [
+        109,
+        217,
+        88,
+        253,
+        56,
+        15,
+        0,
+        46
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "referrer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "referrer",
+          "type": "pubkey"
+        },
+        {
+          "name": "limit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_default_profit_bps",
+      "discriminator": [
+        59,
+        240,
+        135,
+        22,
+        91,
+        124,
+        126,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_default_referral_limit",
+      "discriminator": [
+        69,
+        39,
+        250,
+        27,
+        137,
+        23,
+        221,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_limit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_signer",
+      "discriminator": [
+        127,
+        120,
+        252,
+        184,
+        97,
+        4,
+        88,
+        68
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_signer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "update_profit",
+      "discriminator": [
+        168,
+        124,
+        231,
+        68,
+        107,
+        42,
+        6,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  116,
+                  99,
+                  104,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller"
+        },
+        {
+          "name": "user_ref_for_player",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  102
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_settings_for_player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_ref_for_player.referrer",
+                "account": "UserReferral"
+              }
+            ]
+          }
+        },
+        {
+          "name": "profit_for_round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user_ref_for_player.referrer",
+                "account": "UserReferral"
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_total_profit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "referral_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  97,
+                  108,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "player",
+          "type": "pubkey"
+        },
+        {
+          "name": "round_id",
+          "type": "u64"
+        },
+        {
+          "name": "total_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "view_referrer_for_user",
+      "discriminator": [
+        14,
+        23,
+        27,
+        231,
+        187,
+        228,
+        11,
+        156
+      ],
+      "accounts": [
+        {
+          "name": "user_ref_for_player",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  102
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "player"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "player",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "view_referrer_profit_for_round",
+      "discriminator": [
+        247,
+        174,
+        14,
+        97,
+        117,
+        214,
+        56,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "profit_for_round",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "referrer"
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "referrer",
+          "type": "pubkey"
+        },
+        {
+          "name": "round_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "view_referrer_settings",
+      "discriminator": [
+        13,
+        1,
+        132,
+        230,
+        57,
+        110,
+        193,
+        46
+      ],
+      "accounts": [
+        {
+          "name": "referrer_settings",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "referrer"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "referrer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "view_registration_stats",
+      "discriminator": [
+        8,
+        112,
+        185,
+        176,
+        77,
+        255,
+        23,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "registration_stats",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "code_hash"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "code_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "view_round_total_profit",
+      "discriminator": [
+        17,
+        16,
+        234,
+        109,
+        35,
+        94,
+        7,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "round_total_profit",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_profit_for_round",
+      "docs": [
+        "Вывод профита за конкретный раунд из escrow на кошелёк реферера"
+      ],
+      "discriminator": [
+        241,
+        146,
+        0,
+        151,
+        55,
+        70,
+        123,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "profit_for_round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "referrer"
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_total_profit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "referral_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  101,
+                  114,
+                  114,
+                  97,
+                  108,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CodeIndex",
+      "discriminator": [
+        28,
+        203,
+        17,
+        105,
+        237,
+        92,
+        123,
+        25
+      ]
+    },
+    {
+      "name": "CodeRef",
+      "discriminator": [
+        102,
+        77,
+        88,
+        26,
+        218,
+        79,
+        62,
+        193
+      ]
+    },
+    {
+      "name": "ReferralEscrow",
+      "discriminator": [
+        115,
+        18,
+        69,
+        141,
+        241,
+        51,
+        104,
+        186
+      ]
+    },
+    {
+      "name": "ReferrerProfitForRound",
+      "discriminator": [
+        14,
+        205,
+        92,
+        112,
+        103,
+        173,
+        18,
+        199
+      ]
+    },
+    {
+      "name": "ReferrerSettings",
+      "discriminator": [
+        13,
+        215,
+        12,
+        95,
+        216,
+        205,
+        147,
+        67
+      ]
+    },
+    {
+      "name": "RegistrationStats",
+      "discriminator": [
+        35,
+        11,
+        27,
+        132,
+        190,
+        110,
+        210,
+        160
+      ]
+    },
+    {
+      "name": "RoundTotalProfit",
+      "discriminator": [
+        174,
+        194,
+        19,
+        122,
+        71,
+        106,
+        44,
+        104
+      ]
+    },
+    {
+      "name": "UserReferral",
+      "discriminator": [
+        60,
+        72,
+        219,
+        164,
+        122,
+        102,
+        170,
+        140
+      ]
+    },
+    {
+      "name": "WatcherState",
+      "discriminator": [
+        34,
+        71,
+        47,
+        31,
+        166,
+        132,
+        100,
+        255
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ProfitUpdated",
+      "discriminator": [
+        168,
+        129,
+        145,
+        65,
+        168,
+        45,
+        68,
+        14
+      ]
+    },
+    {
+      "name": "ProfitWithdrawn",
+      "discriminator": [
+        165,
+        15,
+        185,
+        73,
+        134,
+        218,
+        84,
+        78
+      ]
+    },
+    {
+      "name": "ReferrerForUser",
+      "discriminator": [
+        186,
+        121,
+        215,
+        89,
+        142,
+        238,
+        123,
+        52
+      ]
+    },
+    {
+      "name": "ReferrerProfitView",
+      "discriminator": [
+        198,
+        218,
+        119,
+        140,
+        160,
+        238,
+        200,
+        141
+      ]
+    },
+    {
+      "name": "ReferrerSettingsView",
+      "discriminator": [
+        130,
+        13,
+        56,
+        133,
+        66,
+        148,
+        232,
+        89
+      ]
+    },
+    {
+      "name": "RegistrationStatsView",
+      "discriminator": [
+        8,
+        210,
+        73,
+        59,
+        179,
+        48,
+        151,
+        5
+      ]
+    },
+    {
+      "name": "RoundTotalProfitView",
+      "discriminator": [
+        4,
+        125,
+        224,
+        21,
+        245,
+        59,
+        62,
+        3
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Нет авторизации"
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyRegistered",
+      "msg": "Уже зарегистрирован"
+    },
+    {
+      "code": 6002,
+      "name": "ReferralLimitExceeded",
+      "msg": "Превышен дневной лимит для кода"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidPercentage",
+      "msg": "Неверный процент"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidLimit",
+      "msg": "Неверный лимит"
+    },
+    {
+      "code": 6005,
+      "name": "InsufficientEscrow",
+      "msg": "Недостаточно средств в escrow"
+    }
+  ],
+  "types": [
+    {
+      "name": "CodeIndex",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "code_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CodeRef",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "code_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProfitUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer_code",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProfitWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferralEscrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferrerForUser",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "code_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferrerProfitForRound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferrerProfitView",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferrerSettings",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "percentage_bps",
+            "type": "u16"
+          },
+          {
+            "name": "custom_limit",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReferrerSettingsView",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "percentage_bps",
+            "type": "u16"
+          },
+          {
+            "name": "custom_limit",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistrationStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "code_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "day",
+            "type": "i64"
+          },
+          {
+            "name": "count",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistrationStatsView",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "code_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "day",
+            "type": "i64"
+          },
+          {
+            "name": "count",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundTotalProfit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundTotalProfitView",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserReferral",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "referrer_code",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WatcherState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "default_profit_bps",
+            "type": "u16"
+          },
+          {
+            "name": "default_referral_limit",
+            "type": "u64"
+          },
+          {
+            "name": "lottery",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
