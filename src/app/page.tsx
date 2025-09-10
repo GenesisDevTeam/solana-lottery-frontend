@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
-import { useAnchor } from "@/lib/anchor";
+import { useAnchor, ids } from "@/lib/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { WalletGate } from "@/components/WalletGate";
+import { explorerAddressUrl } from "../lib/utils";
 
 export default function Home() {
   const { lottery, watcher } = useAnchor();
@@ -15,6 +16,9 @@ export default function Home() {
   const [ticketPrice, setTicketPrice] = useState<string>("-");
   const [ticketCount, setTicketCount] = useState(1);
   const [registered, setRegistered] = useState<boolean | null>(null);
+  const [referrer, setReferrer] = useState<string | null>(null);
+  const [refCodeHex, setRefCodeHex] = useState<string | null>(null);
+  const [watcherDefaults, setWatcherDefaults] = useState<{ bps: number; limit: string } | null>(null);
 
   useEffect(() => {
     const run = async () => {
@@ -31,11 +35,30 @@ export default function Home() {
           setRoundPot((round.pot as anchor.BN).toString());
           setTicketPrice((round.ticketPrice as anchor.BN).toString());
         }
-        // проверяем регистрацию пользователя в реф. системе
+        // проверяем регистрацию пользователя в реф. системе и читаем детали
         if (watcher && lottery.provider.publicKey) {
           const [userRefPda] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), lottery.provider.publicKey.toBuffer()], watcher.programId);
-          const info = await watcher.provider.connection.getAccountInfo(userRefPda);
-          setRegistered(Boolean(info));
+          const userRef = await watcher.account.userReferral.fetchNullable(userRefPda);
+          if (userRef) {
+            setRegistered(true);
+            const data = userRef as unknown as { referrer: PublicKey; referrerCode: number[] };
+            setReferrer(data.referrer.toBase58());
+            const hex = Buffer.from(data.referrerCode).toString("hex");
+            setRefCodeHex(hex);
+          } else {
+            setRegistered(false);
+            setReferrer(null);
+            setRefCodeHex(null);
+          }
+        }
+        // дефолтные параметры партнёрки
+        if (watcher) {
+          const [watcherStatePda] = PublicKey.findProgramAddressSync([Buffer.from("watcher_state")], watcher.programId);
+          const wState = await watcher.account.watcherState.fetchNullable(watcherStatePda);
+          if (wState) {
+            const d = wState as unknown as { defaultProfitBps: number; defaultReferralLimit: anchor.BN };
+            setWatcherDefaults({ bps: Number(d.defaultProfitBps), limit: (d.defaultReferralLimit as anchor.BN).toString() });
+          }
         }
       } finally {
         setLoading(false);
@@ -151,20 +174,21 @@ export default function Home() {
         <WalletMultiButton />
       </div>
       <WalletGate>
+        {/* Блок 1: Моя реф. информация */}
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="font-medium">Моя реф. информация</div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Статус:</span><span>{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Реферер:</span><span>{referrer ? <a className="underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}</a> : "-"}</span></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Код (hex):</span><span className="break-all">{refCodeHex ?? "-"}</span></div>
+          {registered === false && (
+            <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
+          )}
+        </div>
+
+        {/* Блок 2: Покупка билета */}
         <div className="rounded-lg border p-4 space-y-3">
-          <div className="flex gap-4 text-sm">
-            <div className="opacity-70">Текущий раунд:</div>
-            <div>{roundId ?? "-"}</div>
-          </div>
-          <div className="flex gap-4 text-sm">
-            <div className="opacity-70">Пот (lamports):</div>
-            <div>{roundPot}</div>
-          </div>
-          <div className="flex gap-4 text-sm">
-            <div className="opacity-70">Цена билета (lamports):</div>
-            <div>{ticketPrice}</div>
-          </div>
-          <div className="flex items-center gap-3 pt-2">
+          <div className="font-medium">Покупка билета</div>
+          <div className="flex items-center gap-3">
             <input
               type="number"
               min={1}
@@ -180,9 +204,23 @@ export default function Home() {
               {loading ? "Обработка..." : "Купить билеты"}
             </button>
           </div>
-          {registered === false && (
-            <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка будет без начисления реферального профита.</p>
-          )}
+        </div>
+
+        {/* Блок 3: Информация о лотерее */}
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="font-medium">Информация о лотерее</div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Program ID:</span><a className="underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">{ids.lottery}</a></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Текущий раунд:</span><span>{roundId ?? "-"}</span></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Пот (lamports):</span><span>{roundPot}</span></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Цена билета (lamports):</span><span>{ticketPrice}</span></div>
+        </div>
+
+        {/* Блок 4: Информация о партнёрке */}
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="font-medium">Информация о партнёрке</div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Program ID:</span><a className="underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">{ids.watcher}</a></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Default profit (bps):</span><span>{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
+          <div className="text-sm flex gap-4"><span className="opacity-70">Default referral limit:</span><span>{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
         </div>
       </WalletGate>
     </div>
