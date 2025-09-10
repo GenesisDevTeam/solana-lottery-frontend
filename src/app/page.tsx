@@ -60,20 +60,50 @@ export default function Home() {
         purchaseIndex.toArrayLike(Buffer, "le", 8),
       ], lottery.programId);
 
-      // PDA партнёрки
-      const [watcherState] = PublicKey.findProgramAddressSync([Buffer.from("watcher_state")], watcher.programId);
+      // PDA партнёрки (опционально)
       const userPk = lottery.provider.publicKey!;
-      const [userRefForPlayer] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), userPk.toBuffer()], watcher.programId);
-      // читаем user_ref, чтобы получить реферера
-      const userRef = await watcher.account.userReferral.fetchNullable(userRefForPlayer);
+      const [watcherStatePda] = PublicKey.findProgramAddressSync([Buffer.from("watcher_state")], watcher.programId);
+      const [userRefForPlayerPda] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), userPk.toBuffer()], watcher.programId);
+      const userRef = await watcher.account.userReferral.fetchNullable(userRefForPlayerPda);
+
+      // Если нет регистрации, подставляем SystemProgram в реферальные аккаунты, чтобы CPI была пропущена в программе лотереи
+      const accountsWhenNoReferral = {
+        watcherState: anchor.web3.SystemProgram.programId,
+        userRefForPlayer: anchor.web3.SystemProgram.programId,
+        referrerSettingsForPlayer: anchor.web3.SystemProgram.programId,
+        profitForRound: anchor.web3.SystemProgram.programId,
+        roundTotalProfit: anchor.web3.SystemProgram.programId,
+        referralEscrow: anchor.web3.SystemProgram.programId,
+      } as const;
+
+      let accountsReferralPart:
+        | {
+            watcherState: PublicKey;
+            userRefForPlayer: PublicKey;
+            referrerSettingsForPlayer: PublicKey;
+            profitForRound: PublicKey;
+            roundTotalProfit: PublicKey;
+            referralEscrow: PublicKey;
+          }
+        | typeof accountsWhenNoReferral;
+
       if (!userRef) {
-        throw new Error("Нет регистрации по реф.коду. Обратитесь к администратору.");
+        accountsReferralPart = accountsWhenNoReferral;
+      } else {
+        const referrer: PublicKey = (userRef as unknown as { referrer: PublicKey }).referrer;
+        const [referrerSettingsForPlayer] = PublicKey.findProgramAddressSync([Buffer.from("referrer"), referrer.toBuffer()], watcher.programId);
+        const [profitForRound] = PublicKey.findProgramAddressSync([Buffer.from("profit"), referrer.toBuffer(), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcher.programId);
+        const [roundTotalProfit] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcher.programId);
+        const [referralEscrow] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcher.programId);
+        accountsReferralPart = {
+          watcherState: watcherStatePda,
+          userRefForPlayer: userRefForPlayerPda,
+          referrerSettingsForPlayer,
+          profitForRound,
+          roundTotalProfit,
+          referralEscrow,
+        };
       }
-      const referrer: PublicKey = (userRef as unknown as { referrer: PublicKey }).referrer;
-      const [referrerSettingsForPlayer] = PublicKey.findProgramAddressSync([Buffer.from("referrer"), referrer.toBuffer()], watcher.programId);
-      const [profitForRound] = PublicKey.findProgramAddressSync([Buffer.from("profit"), referrer.toBuffer(), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcher.programId);
-      const [roundTotalProfit] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcher.programId);
-      const [referralEscrow] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcher.programId);
 
       await lottery.methods
         .play(new anchor.BN(roundId), new anchor.BN(ticketCount))
@@ -81,14 +111,14 @@ export default function Home() {
           round: roundPda,
           purchase: purchasePda,
           user: userPk,
-          watcherState,
-          userRefForPlayer,
-          referrerSettingsForPlayer,
+          watcherState: accountsReferralPart.watcherState,
+          userRefForPlayer: accountsReferralPart.userRefForPlayer,
+          referrerSettingsForPlayer: accountsReferralPart.referrerSettingsForPlayer,
           lotteryProgram: lottery.programId,
           watcherProgram: watcher.programId,
-          profitForRound,
-          roundTotalProfit,
-          referralEscrow,
+          profitForRound: accountsReferralPart.profitForRound,
+          roundTotalProfit: accountsReferralPart.roundTotalProfit,
+          referralEscrow: accountsReferralPart.referralEscrow,
           systemProgram: anchor.web3.SystemProgram.programId,
         } as {
           round: PublicKey;
@@ -144,14 +174,14 @@ export default function Home() {
             />
             <button
               onClick={onBuy}
-              disabled={buyDisabled || registered === false}
+              disabled={buyDisabled}
               className="px-3 py-1.5 rounded bg-black text-white disabled:opacity-50"
             >
               {loading ? "Обработка..." : "Купить билеты"}
             </button>
           </div>
           {registered === false && (
-            <p className="text-xs text-red-600">Требуется предварительная регистрация по реф.коду (делает админ).</p>
+            <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка будет без начисления реферального профита.</p>
           )}
         </div>
       </WalletGate>
