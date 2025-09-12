@@ -251,6 +251,7 @@ export type SolanaLottery = {
       "accounts": [
         {
           "name": "lotteryState",
+          "writable": true,
           "pda": {
             "seeds": [
               {

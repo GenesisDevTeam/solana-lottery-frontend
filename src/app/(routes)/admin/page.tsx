@@ -22,9 +22,13 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
-  useToast
+  useToast,
+  Divider
 } from "@chakra-ui/react";
 import { Settings, Play, Square, DollarSign } from "lucide-react";
+import watcherIdl from "@/idl/watcher_referral.json";
+import { useEffect } from "react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export default function AdminPage() {
   const { lottery } = useAnchor();
@@ -34,6 +38,52 @@ export default function AdminPage() {
   const [duration, setDuration] = useState("3600");
   const [feeBps, setFeeBps] = useState("500");
   const [error, setError] = useState<string | null>(null);
+  const [feeBalance, setFeeBalance] = useState<string>("-");
+  const [currentRoundInfo, setCurrentRoundInfo] = useState<{
+    roundId: number | null;
+    pot: string;
+    ticketPrice: string;
+    totalTickets: string;
+    finishTs: string;
+  }>({
+    roundId: null,
+    pot: "-",
+    ticketPrice: "-",
+    totalTickets: "-",
+    finishTs: "-"
+  });
+
+  // Загрузка информации о комиссиях и текущем раунде
+  useEffect(() => {
+    const loadAdminInfo = async () => {
+      if (!lottery) return;
+      try {
+        // Загружаем информацию о комиссиях
+        const [lotteryState] = PublicKey.findProgramAddressSync([Buffer.from("lottery_state")], lottery.programId);
+        const state = await lottery.account.lotteryState.fetch(lotteryState);
+        setFeeBalance((state.feeBalance as anchor.BN).toString());
+
+        // Загружаем информацию о текущем раунде
+        const currentRoundId = state.latestRoundId.toNumber();
+        if (currentRoundId > 0) {
+          const [roundPda] = PublicKey.findProgramAddressSync([Buffer.from("round"), new anchor.BN(currentRoundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+          const round = await lottery.account.round.fetch(roundPda);
+          
+          setCurrentRoundInfo({
+            roundId: currentRoundId,
+            pot: (round.pot as anchor.BN).toString(),
+            ticketPrice: (round.ticketPrice as anchor.BN).toString(),
+            totalTickets: (round.totalTickets as anchor.BN).toString(),
+            finishTs: String(round.finishTimestamp)
+          });
+        }
+      } catch (e) {
+        console.error("Ошибка загрузки админской информации:", e);
+      }
+    };
+
+    loadAdminInfo();
+  }, [lottery]);
 
   const createRound = async () => {
     if (!lottery) return;
@@ -83,9 +133,55 @@ export default function AdminPage() {
       const state = await lottery.account.lotteryState.fetch(lotteryState);
       const roundId = state.latestRoundId.toNumber();
       const [roundPda] = PublicKey.findProgramAddressSync([Buffer.from("round"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+      // watcher referral PDAs
+      const watcherProgramId = new PublicKey((watcherIdl as { address: string }).address);
+      const referralEscrow = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId)[0];
+      const roundTotalProfit = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId)[0];
+
+      // подберем пары (purchase, system account победителя)
+      const roundAcc = await lottery.account.round.fetch(roundPda);
+      const winners: number[] = (roundAcc.winningTickets as anchor.BN[]).map((bn: anchor.BN) => bn.toNumber());
+      const purchaseCount = (roundAcc.purchaseCount as anchor.BN).toNumber();
+      const purchases: PublicKey[] = [];
+      const payees: PublicKey[] = [];
+      for (const ticket of winners) {
+        let matchPk: PublicKey | null = null;
+        let matchUser: PublicKey | null = null;
+        for (let idx = 0; idx < purchaseCount; idx++) {
+          const purchasePda = PublicKey.findProgramAddressSync([
+            Buffer.from("purchase"),
+            new anchor.BN(roundId).toArrayLike(Buffer, "le", 8),
+            new anchor.BN(idx).toArrayLike(Buffer, "le", 8),
+          ], lottery.programId)[0];
+          try {
+            const p = await lottery.account.purchase.fetch(purchasePda);
+            const end = (p.cumulativeTickets as anchor.BN).toNumber();
+            const start = end - (p.ticketCount as anchor.BN).toNumber() + 1;
+            if (ticket >= start && ticket <= end) {
+              matchPk = purchasePda;
+              matchUser = p.user as PublicKey;
+              break;
+            }
+          } catch {}
+        }
+        if (!matchPk || !matchUser) throw new Error("Не найден purchase для победителя");
+        purchases.push(matchPk);
+        payees.push(matchUser);
+      }
+
+      const remainingAccounts = [
+        { pubkey: referralEscrow, isSigner: false, isWritable: true },
+        { pubkey: roundTotalProfit, isSigner: false, isWritable: false },
+        ...purchases.flatMap((pk, i) => ([
+          { pubkey: pk, isSigner: false, isWritable: false },
+          { pubkey: payees[i], isSigner: false, isWritable: true },
+        ])),
+      ];
+
       await lottery.methods
         .finishRound(new anchor.BN(roundId))
         .accounts({ lotteryState, round: roundPda })
+        .remainingAccounts(remainingAccounts)
         .rpc();
       toast({
         title: "Раунд завершен",
@@ -230,7 +326,7 @@ export default function AdminPage() {
             </Card>
 
             {/* Finish Round Card */}
-            <Card minH="300px">
+            <Card minH="400px">
               <CardHeader>
                 <HStack spacing={2}>
                   <Square size={20} color="#9945FF" />
@@ -238,25 +334,62 @@ export default function AdminPage() {
                 </HStack>
               </CardHeader>
               <VStack spacing={6} align="stretch" p={6} pt={0}>
-                <Text fontSize="sm" color="gray.600">
-                  Принудительно завершить текущий активный раунд лотереи
-                </Text>
-                <Separator />
-                <Button
-                  onClick={finishRound}
-                  disabled={loading || !lottery}
-                  colorScheme="red"
-                  variant="outline"
-                  leftIcon={loading ? <Spinner size="sm" /> : <Square size={16} />}
-                  size="lg"
-                >
-                  {loading ? "Завершение..." : "Завершить раунд"}
-                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Текущий раунд</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="opacity-70">ID раунда:</span>
+                        <span className="font-medium">{currentRoundInfo.roundId ?? "-"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="opacity-70">Пот:</span>
+                        <span className="font-medium">
+                          {currentRoundInfo.pot !== "-" ? `${(Number(currentRoundInfo.pot) / LAMPORTS_PER_SOL).toFixed(4)} SOL` : "-"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="opacity-70">Цена билета:</span>
+                        <span className="font-medium">
+                          {currentRoundInfo.ticketPrice !== "-" ? `${(Number(currentRoundInfo.ticketPrice) / LAMPORTS_PER_SOL).toFixed(6)} SOL` : "-"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="opacity-70">Куплено билетов:</span>
+                        <span className="font-medium">{currentRoundInfo.totalTickets}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="opacity-70">Финиш:</span>
+                        <span className="font-medium">
+                          {currentRoundInfo.finishTs !== "-" ? new Date(Number(currentRoundInfo.finishTs) * 1000).toLocaleString() : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Text fontSize="sm" color="gray.600">
+                      Принудительно завершить текущий активный раунд лотереи
+                    </Text>
+                    <Divider />
+                    <Button
+                      onClick={finishRound}
+                      disabled={loading || !lottery}
+                      colorScheme="red"
+                      variant="outline"
+                      leftIcon={loading ? <Spinner size="sm" /> : <Square size={16} />}
+                      size="lg"
+                      width="full"
+                    >
+                      {loading ? "Завершение..." : "Завершить раунд"}
+                    </Button>
+                  </div>
+                </div>
               </VStack>
             </Card>
 
             {/* Claim Fees Card */}
-            <Card minH="300px">
+            <Card minH="400px">
               <CardHeader>
                 <HStack spacing={2}>
                   <DollarSign size={20} color="#9945FF" />
@@ -264,19 +397,47 @@ export default function AdminPage() {
                 </HStack>
               </CardHeader>
               <VStack spacing={6} align="stretch" p={6} pt={0}>
-                <Text fontSize="sm" color="gray.600">
-                  Вывести накопленные административные комиссии на ваш кошелек
-                </Text>
-                <Separator />
-                <Button
-                  onClick={claimFees}
-                  disabled={loading || !lottery}
-                  colorScheme="green"
-                  leftIcon={loading ? <Spinner size="sm" /> : <DollarSign size={16} />}
-                  size="lg"
-                >
-                  {loading ? "Вывод..." : "Вывести комиссии"}
-                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Доступные комиссии</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between p-3 bg-green-50 rounded-md">
+                        <span className="opacity-70">Накоплено комиссий:</span>
+                        <span className="font-bold text-green-600">
+                          {feeBalance !== "-" ? `${(Number(feeBalance) / LAMPORTS_PER_SOL).toFixed(6)} SOL` : "-"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-gray-50 rounded-md">
+                        <span className="opacity-70">В lamports:</span>
+                        <span className="font-medium text-gray-600">
+                          {feeBalance !== "-" ? `${Number(feeBalance).toLocaleString()}` : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Text fontSize="sm" color="gray.600">
+                      Вывести накопленные административные комиссии на ваш кошелек
+                    </Text>
+                    <Divider />
+                    <Button
+                      onClick={claimFees}
+                      disabled={loading || !lottery || feeBalance === "-" || Number(feeBalance) === 0}
+                      colorScheme="green"
+                      leftIcon={loading ? <Spinner size="sm" /> : <DollarSign size={16} />}
+                      size="lg"
+                      width="full"
+                    >
+                      {loading ? "Вывод..." : "Вывести комиссии"}
+                    </Button>
+                    {feeBalance !== "-" && Number(feeBalance) === 0 && (
+                      <Text fontSize="xs" color="gray.500" textAlign="center">
+                        Нет доступных комиссий для вывода
+                      </Text>
+                    )}
+                  </div>
+                </div>
               </VStack>
             </Card>
           </VStack>
