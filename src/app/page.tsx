@@ -162,10 +162,12 @@ export default function Home() {
       const accountsWhenNoReferral = {
         watcherState: anchor.web3.SystemProgram.programId,
         userRefForPlayer: anchor.web3.SystemProgram.programId,
-        referrerSettingsForPlayer: anchor.web3.SystemProgram.programId,
-        profitForRound: anchor.web3.SystemProgram.programId,
-        roundTotalProfit: anchor.web3.SystemProgram.programId,
-        referralEscrow: anchor.web3.SystemProgram.programId,
+        // для mut-аккаунтов передаем кошелек пользователя (writable), чтобы пройти ConstraintMut,
+        // при отсутствии user_ref CPI не вызывается и запись не происходит
+        referrerSettingsForPlayer: userPk,
+        profitForRound: userPk,
+        roundTotalProfit: userPk,
+        referralEscrow: userPk,
       } as const;
 
       let accountsReferralPart:
