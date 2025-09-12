@@ -4,7 +4,7 @@ import * as React from "react";
 import { ChakraProvider, extendTheme, type ThemeConfig } from "@chakra-ui/react";
 
 const config: ThemeConfig = {
-  initialColorMode: "dark",
+  initialColorMode: "light",
   useSystemColorMode: false,
 };
 
@@ -13,8 +13,8 @@ const theme = extendTheme({
   styles: {
     global: {
       body: {
-        bg: "#0b0f14",
-        color: "whiteAlpha.900",
+        bg: "#ffffff",
+        color: "gray.800",
       },
     },
   },

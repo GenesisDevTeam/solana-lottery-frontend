@@ -3,7 +3,7 @@ import { Box, Flex, Heading, type BoxProps, type FlexProps, type HeadingProps } 
 
 export function Card(props: BoxProps) {
   return (
-    <Box borderRadius="lg" borderWidth="1px" p={4} bg="blackAlpha.400" borderColor="whiteAlpha.200" {...props} />
+    <Box borderRadius="lg" borderWidth="1px" p={4} bg="white" borderColor="gray.200" shadow="sm" {...props} />
   );
 }
 
@@ -12,7 +12,7 @@ export function CardHeader(props: FlexProps) {
 }
 
 export function CardTitle(props: HeadingProps) {
-  return <Heading size="sm" color="whiteAlpha.900" {...props} />;
+  return <Heading size="sm" color="gray.800" {...props} />;
 }
 
 

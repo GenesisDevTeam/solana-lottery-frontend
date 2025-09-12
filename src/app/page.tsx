@@ -11,14 +11,25 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { IconButton } from "@/components/ui/icon-button";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, Ticket, Users, Settings, Gift, UserPlus, Code } from "lucide-react";
+import { 
+  Box, 
+  VStack, 
+  HStack, 
+  Text, 
+  Heading, 
+  Spinner,
+  Badge,
+  Divider,
+  useToast
+} from "@chakra-ui/react";
 
 export default function Home() {
   const { connection } = useConnection();
   const { lottery, watcher } = useAnchor();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [roundId, setRoundId] = useState<number | null>(null);
   const [roundPot, setRoundPot] = useState<string>("-");
@@ -216,10 +227,22 @@ export default function Home() {
           systemProgram: PublicKey;
         })
         .rpc();
-      alert("Билеты куплены");
+      toast({
+        title: "Билеты куплены",
+        description: `Успешно куплено ${ticketCount} билетов`,
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
     } catch (e) {
       const err = e as Error & { message?: string };
-      alert(err.message || "Ошибка");
+      toast({
+        title: "Ошибка покупки",
+        description: err.message || "Не удалось купить билеты",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -252,10 +275,22 @@ export default function Home() {
         .rpc();
       const hex = codeHash.toString("hex");
       setRefCodeHex(hex);
-      alert("Код сгенерирован");
+      toast({
+        title: "Код сгенерирован",
+        description: "Реферальный код успешно создан",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
     } catch (e) {
       const err = e as Error & { message?: string };
-      alert(err.message || "Ошибка");
+      toast({
+        title: "Ошибка генерации",
+        description: err.message || "Не удалось сгенерировать код",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -266,7 +301,13 @@ export default function Home() {
     try {
       const hex = registerHex.trim();
       if (!/^([0-9a-f]{64})$/i.test(hex)) {
-        alert("Введите 64-символьный hex");
+        toast({
+          title: "Неверный формат",
+          description: "Введите 64-символьный hex код",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
         return;
       }
       setLoading(true);
@@ -301,7 +342,13 @@ export default function Home() {
           systemProgram: PublicKey;
         })
         .rpc();
-      alert("Регистрация выполнена");
+      toast({
+        title: "Регистрация выполнена",
+        description: "Вы успешно зарегистрированы по реферальному коду",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
       // перезагрузим реф. состояние
       const [userRefForPlayerPda] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), userPk.toBuffer()], watcher.programId);
       const userRef = await watcher.account.userReferral.fetchNullable(userRefForPlayerPda);
@@ -313,149 +360,263 @@ export default function Home() {
       }
     } catch (e) {
       const err = e as Error & { message?: string };
-      alert(err.message || "Ошибка");
+      toast({
+        title: "Ошибка регистрации",
+        description: err.message || "Не удалось зарегистрироваться",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Solana Lottery</h1>
-        <WalletMultiButton />
-      </div>
-      <WalletGate>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Состояние контракта */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Состояние контракта</CardTitle>
-            </CardHeader>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">ID:</span>
-                <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>
-                <IconButton onClick={() => copy(ids.lottery)} aria-label="copy"><Copy size={14} /></IconButton>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Owner:</span>
-                <span className="break-all">{lotteryOwner ?? "-"}</span>
-                {lotteryOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
-                {lotteryOwner && <IconButton onClick={() => copy(lotteryOwner!)} aria-label="copy-owner"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Admin:</span>
-                <span className="break-all">{lotteryAdmin ?? "-"}</span>
-                {lotteryAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
-                {lotteryAdmin && <IconButton onClick={() => copy(lotteryAdmin!)} aria-label="copy-admin"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="opacity-70">Fee balance (lamports): {feeBalance}</div>
-              <Separator className="my-2" />
-              <div className="flex gap-4"><span className="opacity-70">Текущий раунд:</span><span>{roundId ?? "-"}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Пот:</span><span>{roundPot !== "-" ? `${(Number(roundPot) / LAMPORTS_PER_SOL).toFixed(4)} SOL (${roundPot} lamports)` : '-'}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Цена билета:</span><span>{ticketPrice !== "-" ? `${(Number(ticketPrice) / LAMPORTS_PER_SOL).toFixed(6)} SOL (${ticketPrice} lamports)` : '-'}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Куплено билетов:</span><span>{totalTickets}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Победителей:</span><span>{winnersCount}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Финиш:</span><span>{finishTs !== "-" ? new Date(Number(finishTs) * 1000).toLocaleString() : '-'}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Referral total (round):</span><span>{roundReferralTotal}</span></div>
-            </div>
-          </Card>
-
-          {/* Покупка билетов */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Покупка билетов</CardTitle>
-            </CardHeader>
-            <div className="space-y-3 text-sm">
-              <div>
-                <Label className="mb-1 block">Количество</Label>
-                <div className="max-w-[160px]">
-                  <Input type="number" min={1} value={ticketCount} onChange={(e) => setTicketCount(Number(e.target.value))} />
+    <Box maxW="full" mx="auto" p={8}>
+      <VStack spacing={8} align="stretch">
+        {/* Header */}
+        <HStack justify="space-between" align="center">
+          <HStack spacing={3}>
+            <Gift size={28} color="#9945FF" />
+            <Heading size="xl" color="gray.800">Solana Lottery</Heading>
+            <Badge colorScheme="purple" variant="subtle" fontSize="sm">
+              Live
+            </Badge>
+          </HStack>
+          <WalletMultiButton />
+        </HStack>
+        <WalletGate>
+          <VStack spacing={8} align="stretch" maxW="4xl" mx="auto">
+            <div className="grid grid-cols-1 gap-8">
+              {/* Состояние контракта */}
+              <Card minH="400px">
+                <CardHeader>
+                  <HStack spacing={2}>
+                    <Settings size={20} color="#9945FF" />
+                    <CardTitle>Состояние контракта</CardTitle>
+                  </HStack>
+                </CardHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 pt-0">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Основная информация</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">ID:</span>
+                      <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(ids.lottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>
+                      <IconButton onClick={() => copy(ids.lottery)} aria-label="copy"><Copy size={14} /></IconButton>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Owner:</span>
+                      <span className="break-all">{lotteryOwner ?? "-"}</span>
+                      {lotteryOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                      {lotteryOwner && <IconButton onClick={() => copy(lotteryOwner!)} aria-label="copy-owner"><Copy size={14} /></IconButton>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Admin:</span>
+                      <span className="break-all">{lotteryAdmin ?? "-"}</span>
+                      {lotteryAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                      {lotteryAdmin && <IconButton onClick={() => copy(lotteryAdmin!)} aria-label="copy-admin"><Copy size={14} /></IconButton>}
+                    </div>
+                    <div className="opacity-70">Fee balance (lamports): {feeBalance}</div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Текущий раунд</h3>
+                    <div className="flex gap-4"><span className="opacity-70">Раунд:</span><span className="font-medium">{roundId ?? "-"}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Пот:</span><span className="font-medium">{roundPot !== "-" ? `${(Number(roundPot) / LAMPORTS_PER_SOL).toFixed(4)} SOL` : '-'}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Цена билета:</span><span className="font-medium">{ticketPrice !== "-" ? `${(Number(ticketPrice) / LAMPORTS_PER_SOL).toFixed(6)} SOL` : '-'}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Куплено билетов:</span><span className="font-medium">{totalTickets}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Победителей:</span><span className="font-medium">{winnersCount}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Финиш:</span><span className="font-medium">{finishTs !== "-" ? new Date(Number(finishTs) * 1000).toLocaleString() : '-'}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Referral total:</span><span className="font-medium">{roundReferralTotal}</span></div>
+                  </div>
                 </div>
-              </div>
-              <div className="opacity-70 text-xs">Баланс кошелька: {walletBalance} SOL</div>
-              <div className="opacity-70 text-xs">Итого к оплате: {totalToPay}</div>
-              <div>
-                <Button onClick={onBuy} disabled={buyDisabled}>Купить билеты</Button>
-              </div>
-            </div>
           </Card>
 
-          {/* Watcher (Referral) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Watcher (Referral)</CardTitle>
-            </CardHeader>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">ID:</span>
-                <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>
-                <IconButton onClick={() => copy(ids.watcher)} aria-label="copy"><Copy size={14} /></IconButton>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Owner:</span>
-                <span className="break-all">{watcherOwner ?? '-'}</span>
-                {watcherOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
-                {watcherOwner && <IconButton onClick={() => copy(watcherOwner!)} aria-label="copy-w-owner"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Admin:</span>
-                <span className="break-all">{watcherAdmin ?? '-'}</span>
-                {watcherAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
-                {watcherAdmin && <IconButton onClick={() => copy(watcherAdmin!)} aria-label="copy-w-admin"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Signer:</span>
-                <span className="break-all">{watcherSigner ?? '-'}</span>
-                {watcherSigner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherSigner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
-                {watcherSigner && <IconButton onClick={() => copy(watcherSigner!)} aria-label="copy-w-signer"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Lottery linked:</span>
-                <span className="break-all">{watcherLottery ?? '-'}</span>
-                {watcherLottery && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherLottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
-                {watcherLottery && <IconButton onClick={() => copy(watcherLottery!)} aria-label="copy-w-lottery"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="flex gap-4"><span className="opacity-70">Default profit bps:</span><span>{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
-              <div className="flex gap-4"><span className="opacity-70">Default daily reg. limit:</span><span>{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
-            </div>
-          </Card>
-
-          {/* Моя реф. информация */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Моя реф. информация</CardTitle>
-            </CardHeader>
-            <div className="space-y-2 text-sm">
-              <div className="flex gap-4"><span className="opacity-70">Статус:</span><span>{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Referrer:</span>
-                <span>{referrer ? <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}<ExternalLink size={14} /></a> : "-"}</span>
-                {referrer && <IconButton onClick={() => copy(referrer!)} aria-label="copy-ref"><Copy size={14} /></IconButton>}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="opacity-70">Code hash (hex):</span>
-                <span className="break-all">{refCodeHex ?? "-"}</span>
-                {refCodeHex && <IconButton onClick={() => copy(refCodeHex!)} aria-label="copy-code"><Copy size={14} /></IconButton>}
-              </div>
-              {registered === false && (
-                <p className="text-xs text-amber-600">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
-              )}
-              <div className="flex items-center gap-2 flex-wrap pt-2">
-                <Button onClick={onGenerateCode} disabled={!watcher || loading}>Сгенерировать реф-код</Button>
-              </div>
-              <div className="grid grid-cols-1 gap-2 pt-1">
-                <Label>Код рефовода (hex)</Label>
-                <Input placeholder="64-симв. hex" value={registerHex} onChange={(e) => setRegisterHex(e.target.value)} />
-                <div>
-                  <Button onClick={onRegisterByCode} disabled={!watcher || loading}>Зарегистрироваться по коду</Button>
+              {/* Покупка билетов */}
+              <Card minH="400px">
+                <CardHeader>
+                  <HStack spacing={2}>
+                    <Ticket size={20} color="#9945FF" />
+                    <CardTitle>Покупка билетов</CardTitle>
+                  </HStack>
+                </CardHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 pt-0">
+                  <VStack spacing={6} align="stretch">
+                    <Box>
+                      <Label className="mb-2 block text-lg">Количество билетов</Label>
+                      <HStack spacing={4}>
+                        <Input 
+                          type="number" 
+                          min={1} 
+                          value={ticketCount} 
+                          onChange={(e) => setTicketCount(Number(e.target.value))}
+                          className="max-w-[150px] text-lg"
+                        />
+                        <Text fontSize="lg" color="gray.500" fontWeight="medium">
+                          {ticketCount} шт.
+                        </Text>
+                      </HStack>
+                    </Box>
+                    
+                    <VStack spacing={4} align="stretch">
+                      <HStack justify="space-between" p={3} bg="gray.50" borderRadius="md">
+                        <Text fontSize="md" color="gray.600">Баланс кошелька:</Text>
+                        <Text fontSize="md" fontWeight="bold" color="green.600">
+                          {walletBalance} SOL
+                        </Text>
+                      </HStack>
+                      <HStack justify="space-between" p={3} bg="purple.50" borderRadius="md">
+                        <Text fontSize="md" color="gray.600">Итого к оплате:</Text>
+                        <Text fontSize="md" fontWeight="bold" color="purple.600">
+                          {totalToPay}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                  
+                  <VStack spacing={6} align="stretch" justify="center">
+                    <Box textAlign="center">
+                      <Text fontSize="lg" color="gray.600" mb={4}>
+                        Готовы участвовать в лотерее?
+                      </Text>
+                      <Button 
+                        onClick={onBuy} 
+                        disabled={buyDisabled}
+                        colorScheme="purple"
+                        size="xl"
+                        leftIcon={loading ? <Spinner size="sm" /> : <Ticket size={20} />}
+                        width="full"
+                        height="60px"
+                        fontSize="lg"
+                      >
+                        {loading ? "Покупка..." : "Купить билеты"}
+                      </Button>
+                    </Box>
+                  </VStack>
                 </div>
-              </div>
-            </div>
+              </Card>
+
+              {/* Watcher (Referral) */}
+              <Card minH="400px">
+                <CardHeader>
+                  <HStack spacing={2}>
+                    <Users size={20} color="#9945FF" />
+                    <CardTitle>Watcher (Referral)</CardTitle>
+                  </HStack>
+                </CardHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 pt-0">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Контракт Watcher</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">ID:</span>
+                      <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(ids.watcher)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>
+                      <IconButton onClick={() => copy(ids.watcher)} aria-label="copy"><Copy size={14} /></IconButton>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Owner:</span>
+                      <span className="break-all">{watcherOwner ?? '-'}</span>
+                      {watcherOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                      {watcherOwner && <IconButton onClick={() => copy(watcherOwner!)} aria-label="copy-w-owner"><Copy size={14} /></IconButton>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Admin:</span>
+                      <span className="break-all">{watcherAdmin ?? '-'}</span>
+                      {watcherAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                      {watcherAdmin && <IconButton onClick={() => copy(watcherAdmin!)} aria-label="copy-w-admin"><Copy size={14} /></IconButton>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Signer:</span>
+                      <span className="break-all">{watcherSigner ?? '-'}</span>
+                      {watcherSigner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherSigner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                      {watcherSigner && <IconButton onClick={() => copy(watcherSigner!)} aria-label="copy-w-signer"><Copy size={14} /></IconButton>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Lottery linked:</span>
+                      <span className="break-all">{watcherLottery ?? '-'}</span>
+                      {watcherLottery && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherLottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
+                      {watcherLottery && <IconButton onClick={() => copy(watcherLottery!)} aria-label="copy-w-lottery"><Copy size={14} /></IconButton>}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Настройки партнерки</h3>
+                    <div className="flex gap-4"><span className="opacity-70">Default profit bps:</span><span className="font-medium">{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Default daily reg. limit:</span><span className="font-medium">{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
+                  </div>
+                </div>
           </Card>
-        </div>
-      </WalletGate>
-    </div>
+
+              {/* Моя реф. информация */}
+              <Card minH="500px">
+                <CardHeader>
+                  <HStack spacing={2}>
+                    <UserPlus size={20} color="#9945FF" />
+                    <CardTitle>Моя реф. информация</CardTitle>
+                  </HStack>
+                </CardHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 pt-0">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Текущий статус</h3>
+                    <div className="flex gap-4"><span className="opacity-70">Статус:</span><span className="font-medium">{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Referrer:</span>
+                      <span>{referrer ? <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}<ExternalLink size={14} /></a> : "-"}</span>
+                      {referrer && <IconButton onClick={() => copy(referrer!)} aria-label="copy-ref"><Copy size={14} /></IconButton>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="opacity-70">Code hash (hex):</span>
+                      <span className="break-all">{refCodeHex ?? "-"}</span>
+                      {refCodeHex && <IconButton onClick={() => copy(refCodeHex!)} aria-label="copy-code"><Copy size={14} /></IconButton>}
+                    </div>
+                    {registered === false && (
+                      <p className="text-xs text-amber-700">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Управление рефералами</h3>
+                    <VStack spacing={4} align="stretch">
+                      <Box>
+                    <Button 
+                      onClick={onGenerateCode} 
+                      disabled={!watcher || loading}
+                      colorScheme="purple"
+                      variant="outline"
+                      leftIcon={loading ? <Spinner size="sm" /> : <Code size={16} />}
+                      size="lg"
+                    >
+                      {loading ? "Генерация..." : "Сгенерировать реф-код"}
+                    </Button>
+                  </Box>
+                  
+                  <Divider />
+                  
+                      <VStack spacing={4} align="stretch">
+                        <Label>Код рефовода (hex)</Label>
+                        <Input 
+                          placeholder="64-симв. hex" 
+                          value={registerHex} 
+                          onChange={(e) => setRegisterHex(e.target.value)}
+                        />
+                        <Button 
+                          onClick={onRegisterByCode} 
+                          disabled={!watcher || loading}
+                          colorScheme="green"
+                          leftIcon={loading ? <Spinner size="sm" /> : <UserPlus size={16} />}
+                          size="lg"
+                        >
+                          {loading ? "Регистрация..." : "Зарегистрироваться по коду"}
+                        </Button>
+                      </VStack>
+                    </VStack>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </VStack>
+        </WalletGate>
+      </VStack>
+    </Box>
   );
 }
