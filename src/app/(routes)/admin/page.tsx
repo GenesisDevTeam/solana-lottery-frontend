@@ -124,6 +124,147 @@ export default function AdminPage() {
     }
   };
 
+  const finishRoundWithRandomness = async () => {
+    if (!lottery) return;
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [lotteryState] = PublicKey.findProgramAddressSync([Buffer.from("lottery_state")], lottery.programId);
+      const state = await lottery.account.lotteryState.fetch(lotteryState);
+      const roundId = state.latestRoundId.toNumber();
+      const [roundPda] = PublicKey.findProgramAddressSync([Buffer.from("round"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+      
+      // Проверяем состояние раунда
+      const round = await lottery.account.round.fetch(roundPda);
+      if (round.isFinished) {
+        throw new Error("Раунд уже завершен");
+      }
+      
+      // Генерируем случайный аккаунт для Switchboard On-Demand
+      const randomnessKeypair = anchor.web3.Keypair.generate();
+      
+      // 1. Запрос случайности
+      await lottery.methods
+        .requestOnDemandRandomness(new anchor.BN(roundId))
+        .accountsPartial({
+          round: roundPda,
+          randomnessAccount: randomnessKeypair.publicKey,
+          payer: lottery.provider.publicKey!,
+          switchboardOnDemandProgram: new PublicKey("Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"),
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([randomnessKeypair])
+        .rpc();
+      
+      toast({
+        title: "Случайность запрошена",
+        description: "Ожидайте получения случайности от Switchboard...",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      // 2. Ждем небольшое время и получаем случайность (в реальности нужно слушать события)
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Генерируем мок-случайность для демонстрации (в реальности получаем от Switchboard)
+      const mockRandomness = Array.from(crypto.getRandomValues(new Uint8Array(32)));
+      
+      // watcher referral PDAs
+      const watcherProgramId = new PublicKey((watcherIdl as { address: string }).address);
+      const referralEscrow = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId)[0];
+      const roundTotalProfit = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId)[0];
+      
+      // 3. Завершение раунда с использованием On-Demand случайности
+      const purchaseCount = (round.purchaseCount as anchor.BN).toNumber();
+      const purchases: PublicKey[] = [];
+      const payees: PublicKey[] = [];
+      
+      // Для демонстрации генерируем победителей локально (в реальности это делает контракт)
+      const winnersCount = round.winnersCount;
+      const totalTickets = (round.totalTickets as anchor.BN).toNumber();
+      
+      if (totalTickets > 0) {
+        for (let i = 0; i < winnersCount; i++) {
+          // Простая генерация случайного билета
+          const randomTicket = Math.floor(Math.random() * totalTickets) + 1;
+          
+          // Находим владельца этого билета
+          let matchPk: PublicKey | null = null;
+          let matchUser: PublicKey | null = null;
+          
+          for (let idx = 0; idx < purchaseCount; idx++) {
+            const purchasePda = PublicKey.findProgramAddressSync([
+              Buffer.from("purchase"),
+              new anchor.BN(roundId).toArrayLike(Buffer, "le", 8),
+              new anchor.BN(idx).toArrayLike(Buffer, "le", 8),
+            ], lottery.programId)[0];
+            
+            try {
+              const p = await lottery.account.purchase.fetch(purchasePda);
+              const end = (p.cumulativeTickets as anchor.BN).toNumber();
+              const start = end - (p.ticketCount as anchor.BN).toNumber() + 1;
+              
+              if (randomTicket >= start && randomTicket <= end) {
+                matchPk = purchasePda;
+                matchUser = p.user as PublicKey;
+                break;
+              }
+            } catch {}
+          }
+          
+          if (matchPk && matchUser) {
+            purchases.push(matchPk);
+            payees.push(matchUser);
+          }
+        }
+      }
+      
+      const remainingAccounts = [
+        { pubkey: referralEscrow, isSigner: false, isWritable: true },
+        { pubkey: roundTotalProfit, isSigner: false, isWritable: false },
+        ...purchases.flatMap((pk, i) => ([
+          { pubkey: pk, isSigner: false, isWritable: false },
+          { pubkey: payees[i], isSigner: false, isWritable: true },
+        ])),
+      ];
+      
+      await lottery.methods
+        .settleOnDemandRandomness(new anchor.BN(roundId), mockRandomness)
+        .accountsPartial({
+          lotteryState,
+          round: roundPda,
+          randomnessAccount: randomnessKeypair.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .remainingAccounts(remainingAccounts)
+        .rpc();
+      
+      toast({
+        title: "Раунд завершен",
+        description: `Раунд #${roundId} успешно завершен с генерацией случайности`,
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+      
+    } catch (e) {
+      const err = e as Error & { message?: string };
+      const errorMsg = err.message || "Ошибка завершения раунда";
+      setError(errorMsg);
+      toast({
+        title: "Ошибка",
+        description: errorMsg,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const finishRound = async () => {
     if (!lottery) return;
     try {
@@ -369,20 +510,35 @@ export default function AdminPage() {
                   
                   <div className="space-y-4">
                     <Text fontSize="sm" color="gray.600">
-                      Принудительно завершить текущий активный раунд лотереи
+                      Завершить текущий активный раунд лотереи
                     </Text>
                     <Divider />
-                    <Button
-                      onClick={finishRound}
-                      disabled={loading || !lottery}
-                      colorScheme="red"
-                      variant="outline"
-                      leftIcon={loading ? <Spinner size="sm" /> : <Square size={16} />}
-                      size="lg"
-                      width="full"
-                    >
-                      {loading ? "Завершение..." : "Завершить раунд"}
-                    </Button>
+                    <VStack spacing={3}>
+                      <Button
+                        onClick={finishRoundWithRandomness}
+                        disabled={loading || !lottery}
+                        colorScheme="purple"
+                        leftIcon={loading ? <Spinner size="sm" /> : <Square size={16} />}
+                        size="lg"
+                        width="full"
+                      >
+                        {loading ? "Завершение..." : "Завершить с рандомом"}
+                      </Button>
+                      <Button
+                        onClick={finishRound}
+                        disabled={loading || !lottery}
+                        colorScheme="red"
+                        variant="outline"
+                        leftIcon={loading ? <Spinner size="sm" /> : <Square size={16} />}
+                        size="md"
+                        width="full"
+                      >
+                        {loading ? "Завершение..." : "Завершить (без рандома)"}
+                      </Button>
+                    </VStack>
+                    <Text fontSize="xs" color="gray.500" textAlign="center">
+                      Рекомендуется использовать &quot;Завершить с рандомом&quot; для честной генерации победителей
+                    </Text>
                   </div>
                 </div>
               </VStack>

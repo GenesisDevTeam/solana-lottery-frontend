@@ -245,6 +245,7 @@
       "accounts": [
         {
           "name": "lottery_state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -639,7 +640,8 @@
           "name": "user_ref_for_player"
         },
         {
-          "name": "referrer_settings_for_player"
+          "name": "referrer_settings_for_player",
+          "writable": true
         },
         {
           "name": "lottery_program"
@@ -649,13 +651,16 @@
           "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf"
         },
         {
-          "name": "profit_for_round"
+          "name": "profit_for_round",
+          "writable": true
         },
         {
-          "name": "round_total_profit"
+          "name": "round_total_profit",
+          "writable": true
         },
         {
-          "name": "referral_escrow"
+          "name": "referral_escrow",
+          "writable": true
         },
         {
           "name": "system_program",
@@ -670,6 +675,156 @@
         {
           "name": "ticket_count",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "request_on_demand_randomness",
+      "docs": [
+        "Запрос случайности через Switchboard On-Demand VRF"
+      ],
+      "discriminator": [
+        146,
+        145,
+        162,
+        229,
+        141,
+        144,
+        115,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "round",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness_account",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "switchboard_on_demand_program",
+          "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settle_on_demand_randomness",
+      "docs": [
+        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
+      ],
+      "discriminator": [
+        147,
+        4,
+        137,
+        96,
+        249,
+        227,
+        98,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "lottery_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness_account"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        },
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     }
@@ -740,6 +895,32 @@
         14,
         225,
         254
+      ]
+    },
+    {
+      "name": "RandomnessRequested",
+      "discriminator": [
+        10,
+        64,
+        183,
+        29,
+        104,
+        63,
+        90,
+        149
+      ]
+    },
+    {
+      "name": "RandomnessSettled",
+      "discriminator": [
+        219,
+        235,
+        45,
+        239,
+        116,
+        19,
+        92,
+        74
       ]
     },
     {
@@ -910,6 +1091,40 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RandomnessRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "randomness_account",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RandomnessSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "winning_tickets",
+            "type": {
+              "vec": "u64"
+            }
           }
         ]
       }

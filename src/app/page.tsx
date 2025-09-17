@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
-import { useAnchor, ids } from "@/lib/anchor";
+import { useAnchor, ids, getRoundWinners, type RoundWinners } from "@/lib/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { WalletGate } from "@/components/WalletGate";
 import { explorerAddressUrl } from "../lib/utils";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { IconButton } from "@/components/ui/icon-button";
-import { Copy, ExternalLink, Ticket, Users, Settings, Gift, UserPlus, Code } from "lucide-react";
+import { Copy, ExternalLink, Ticket, Users, Settings, Gift, UserPlus, Code, Trophy, Clock } from "lucide-react";
 import { 
   Box, 
   VStack, 
@@ -52,6 +52,8 @@ export default function Home() {
   const [feeBalance, setFeeBalance] = useState<string>("-");
   const [walletBalance, setWalletBalance] = useState<string>("-");
   const [registerHex, setRegisterHex] = useState<string>("");
+  const [roundWinners, setRoundWinners] = useState<RoundWinners | null>(null);
+  const [loadingWinners, setLoadingWinners] = useState<boolean>(false);
 
   useEffect(() => {
     const run = async () => {
@@ -119,6 +121,20 @@ export default function Home() {
             setWatcherLottery(d.lottery.toBase58());
           }
         }
+        
+        // Загрузка данных о победителях текущего раунда
+        if (currentRoundId > 0) {
+          setLoadingWinners(true);
+          try {
+            const winners = await getRoundWinners(lottery, currentRoundId);
+            setRoundWinners(winners);
+          } catch (e) {
+            console.error("Ошибка загрузки победителей:", e);
+          } finally {
+            setLoadingWinners(false);
+          }
+        }
+        
       } finally {
         setLoading(false);
       }
@@ -434,6 +450,146 @@ export default function Home() {
                   </div>
                 </div>
           </Card>
+
+              {/* Результаты лотереи */}
+              <Card minH="400px">
+                <CardHeader>
+                  <HStack spacing={2}>
+                    <Trophy size={20} color="#9945FF" />
+                    <CardTitle>Результаты лотереи</CardTitle>
+                    {loadingWinners && <Spinner size="sm" color="purple.500" />}
+                  </HStack>
+                </CardHeader>
+                <div className="p-6 pt-0">
+                  {roundWinners ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3">Информация о раунде</h3>
+                          <div className="flex gap-4">
+                            <span className="opacity-70">Раунд:</span>
+                            <span className="font-medium">#{roundWinners.roundId}</span>
+                          </div>
+                          <div className="flex gap-4">
+                            <span className="opacity-70">Статус:</span>
+                            <Badge colorScheme={roundWinners.isFinished ? "green" : "yellow"} variant="subtle">
+                              {roundWinners.isFinished ? "Завершен" : "Активен"}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-4">
+                            <span className="opacity-70">Общий пот:</span>
+                            <span className="font-medium">
+                              {(roundWinners.pot / LAMPORTS_PER_SOL).toFixed(4)} SOL
+                            </span>
+                          </div>
+                          <div className="flex gap-4">
+                            <span className="opacity-70">Всего билетов:</span>
+                            <span className="font-medium">{roundWinners.totalTickets}</span>
+                          </div>
+                          <div className="flex gap-4">
+                            <span className="opacity-70">Завершен:</span>
+                            <span className="font-medium">
+                              {roundWinners.isFinished ? 
+                                new Date(roundWinners.finishTimestamp * 1000).toLocaleString() : 
+                                "В процессе"
+                              }
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                            Победители ({roundWinners.winners.length})
+                          </h3>
+                          {roundWinners.winners.length > 0 ? (
+                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                              {roundWinners.winners.map((winner, index) => (
+                                <div 
+                                  key={index} 
+                                  className="p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Trophy size={16} className="text-yellow-600" />
+                                    <Text fontSize="sm" fontWeight="bold" color="yellow.700">
+                                      Место #{index + 1}
+                                    </Text>
+                                  </div>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between">
+                                      <span className="opacity-70">Билет:</span>
+                                      <span className="font-medium">#{winner.winningTicket}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="opacity-70">Награда:</span>
+                                      <span className="font-bold text-green-600">
+                                        {(winner.reward / LAMPORTS_PER_SOL).toFixed(4)} SOL
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 justify-between">
+                                      <span className="opacity-70">Игрок:</span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="font-mono text-xs">
+                                          {winner.user.slice(0, 4)}...{winner.user.slice(-4)}
+                                        </span>
+                                        <a 
+                                          href={explorerAddressUrl(winner.user)} 
+                                          target="_blank" 
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-700"
+                                        >
+                                          <ExternalLink size={12} />
+                                        </a>
+                                        <IconButton 
+                                          onClick={() => copy(winner.user)} 
+                                          aria-label="copy-winner"
+                                          size="xs"
+                                        >
+                                          <Copy size={10} />
+                                        </IconButton>
+                                      </div>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="opacity-70">Диапазон:</span>
+                                      <span className="font-mono text-xs">
+                                        {winner.ticketRange.start}-{winner.ticketRange.end}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              {roundWinners.isFinished ? (
+                                <div className="text-gray-500">
+                                  <Clock size={24} className="mx-auto mb-2 opacity-50" />
+                                  <Text fontSize="sm">Нет победителей в этом раунде</Text>
+                                </div>
+                              ) : (
+                                <div className="text-gray-500">
+                                  <Clock size={24} className="mx-auto mb-2 opacity-50" />
+                                  <Text fontSize="sm">Раунд еще не завершен</Text>
+                                  <Text fontSize="xs" className="mt-1">Победители будут определены после завершения</Text>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-gray-500">
+                        <Trophy size={32} className="mx-auto mb-3 opacity-30" />
+                        <Text fontSize="md">Нет данных о раунде</Text>
+                        <Text fontSize="sm" className="mt-1 opacity-70">
+                          Создайте новый раунд в админ панели
+                        </Text>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
 
               {/* Покупка билетов */}
               <Card minH="400px">

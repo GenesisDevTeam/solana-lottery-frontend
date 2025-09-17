@@ -646,7 +646,8 @@ export type SolanaLottery = {
           "name": "userRefForPlayer"
         },
         {
-          "name": "referrerSettingsForPlayer"
+          "name": "referrerSettingsForPlayer",
+          "writable": true
         },
         {
           "name": "lotteryProgram"
@@ -656,13 +657,16 @@ export type SolanaLottery = {
           "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf"
         },
         {
-          "name": "profitForRound"
+          "name": "profitForRound",
+          "writable": true
         },
         {
-          "name": "roundTotalProfit"
+          "name": "roundTotalProfit",
+          "writable": true
         },
         {
-          "name": "referralEscrow"
+          "name": "referralEscrow",
+          "writable": true
         },
         {
           "name": "systemProgram",
@@ -677,6 +681,156 @@ export type SolanaLottery = {
         {
           "name": "ticketCount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "requestOnDemandRandomness",
+      "docs": [
+        "Запрос случайности через Switchboard On-Demand VRF"
+      ],
+      "discriminator": [
+        146,
+        145,
+        162,
+        229,
+        141,
+        144,
+        115,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "round",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "roundId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomnessAccount",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "switchboardOnDemandProgram",
+          "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "roundId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settleOnDemandRandomness",
+      "docs": [
+        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
+      ],
+      "discriminator": [
+        147,
+        4,
+        137,
+        96,
+        249,
+        227,
+        98,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "lotteryState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "roundId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomnessAccount"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "roundId",
+          "type": "u64"
+        },
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     }
@@ -747,6 +901,32 @@ export type SolanaLottery = {
         14,
         225,
         254
+      ]
+    },
+    {
+      "name": "randomnessRequested",
+      "discriminator": [
+        10,
+        64,
+        183,
+        29,
+        104,
+        63,
+        90,
+        149
+      ]
+    },
+    {
+      "name": "randomnessSettled",
+      "discriminator": [
+        219,
+        235,
+        45,
+        239,
+        116,
+        19,
+        92,
+        74
       ]
     },
     {
@@ -917,6 +1097,40 @@ export type SolanaLottery = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "randomnessRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "roundId",
+            "type": "u64"
+          },
+          {
+            "name": "randomnessAccount",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "randomnessSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "roundId",
+            "type": "u64"
+          },
+          {
+            "name": "winningTickets",
+            "type": {
+              "vec": "u64"
+            }
           }
         ]
       }
