@@ -298,6 +298,38 @@ export type SolanaLottery = {
           }
         },
         {
+          "name": "roundEscrow",
+          "docs": [
+            "Escrow аккаунт для хранения SOL раунда"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "roundId"
+              }
+            ]
+          }
+        },
+        {
           "name": "admin",
           "signer": true,
           "relations": [
@@ -525,6 +557,39 @@ export type SolanaLottery = {
           }
         },
         {
+          "name": "roundEscrow",
+          "docs": [
+            "Escrow аккаунт для хранения SOL раунда"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lottery_state.latest_round_id.checked_add(1)",
+                "account": "lotteryState"
+              }
+            ]
+          }
+        },
+        {
           "name": "admin",
           "writable": true,
           "signer": true,
@@ -595,6 +660,38 @@ export type SolanaLottery = {
                   117,
                   110,
                   100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "roundId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "roundEscrow",
+          "docs": [
+            "Escrow аккаунт для хранения SOL раунда (отдельно от PDA с данными)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
                 ]
               },
               {
@@ -801,6 +898,38 @@ export type SolanaLottery = {
                   117,
                   110,
                   100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "roundId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "roundEscrow",
+          "docs": [
+            "Escrow аккаунт для хранения SOL раунда"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
                 ]
               },
               {
