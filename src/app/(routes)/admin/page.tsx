@@ -142,12 +142,14 @@ export default function AdminPage() {
       const state = await lottery.account.lotteryState.fetch(lotteryState);
       const newRoundId = state.latestRoundId.toNumber() + 1;
       const [roundPda] = PublicKey.findProgramAddressSync([Buffer.from("round"), new anchor.BN(newRoundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+      const [roundEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("round_escrow"), new anchor.BN(newRoundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
       const now = Math.floor(Date.now() / 1000);
       const startTs = now + 30;
       const finishTs = now + parseInt(duration, 10);
       const initAccounts = { 
         lotteryState, 
         round: roundPda,
+        roundEscrow: roundEscrowPda,
         admin: lottery.provider.publicKey!,
         systemProgram: anchor.web3.SystemProgram.programId,
       };
@@ -303,9 +305,11 @@ export default function AdminPage() {
       
 
       // Вызываем settle_on_demand_randomness с правильными аккаунтами
+      const [roundEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("round_escrow"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
       const settleAccounts = {
         lotteryState,
         round: roundPda,
+        roundEscrow: roundEscrowPda,
         randomnessAccount: anchor.web3.SystemProgram.programId,
         systemProgram: anchor.web3.SystemProgram.programId,
       };
