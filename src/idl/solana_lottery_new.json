@@ -1,0 +1,330 @@
+{
+  "address": "AHw5KYiCeU2Bj2KvQR6YcCAcQcqusp58mz3MRyiT61M9",
+  "metadata": {
+    "name": "solana_lottery",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "cancel_round",
+      "docs": [
+        "Отмена раунда при нуле покупок (закрытие аккаунта раунда)"
+      ],
+      "discriminator": [82, 70, 134, 54, 46, 96, 148, 8],
+      "accounts": [
+        {
+          "name": "lottery_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [108, 111, 116, 116, 101, 114, 121, 95, 115, 116, 97, 116, 101]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": ["lottery_state"]
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_round",
+      "discriminator": [43, 135, 19, 93, 14, 225, 131, 188],
+      "accounts": [
+        {
+          "name": "lottery_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [108, 111, 116, 116, 101, 114, 121, 95, 115, 116, 97, 116, 101]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100]
+              },
+              {
+                "kind": "account",
+                "path": "lottery_state.latest_round_id.checked_add(1)",
+                "account": "LotteryState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": ["Escrow аккаунт для хранения SOL раунда"],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100, 95, 101, 115, 99, 114, 111, 119]
+              },
+              {
+                "kind": "account",
+                "path": "lottery_state.latest_round_id.checked_add(1)",
+                "account": "LotteryState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": ["lottery_state"]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "start_timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "finish_timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "winners_count",
+          "type": "u16"
+        },
+        {
+          "name": "reward_sharing_bps",
+          "type": {
+            "vec": "u16"
+          }
+        },
+        {
+          "name": "ticket_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "play",
+      "docs": ["Покупка билетов (оплата в SOL)"],
+      "discriminator": [213, 157, 193, 142, 228, 56, 248, 150],
+      "accounts": [
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": ["Escrow аккаунт для хранения SOL раунда (отдельно от PDA с данными)"],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100, 95, 101, 115, 99, 114, 111, 119]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "purchase",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [112, 117, 114, 99, 104, 97, 115, 101]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              },
+              {
+                "kind": "account",
+                "path": "round.purchase_count",
+                "account": "Round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "watcher_state"
+        },
+        {
+          "name": "user_ref_for_player"
+        },
+        {
+          "name": "referrer_settings_for_player",
+          "writable": true
+        },
+        {
+          "name": "lottery_program"
+        },
+        {
+          "name": "watcher_program",
+          "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf"
+        },
+        {
+          "name": "profit_for_round",
+          "writable": true
+        },
+        {
+          "name": "round_total_profit",
+          "writable": true
+        },
+        {
+          "name": "referral_escrow",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        },
+        {
+          "name": "ticket_count",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settle_on_demand_randomness",
+      "docs": ["Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"],
+      "discriminator": [147, 4, 137, 96, 249, 227, 98, 48],
+      "accounts": [
+        {
+          "name": "lottery_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [108, 111, 116, 116, 101, 114, 121, 95, 115, 116, 97, 116, 101]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": ["Escrow аккаунт для хранения SOL раунда"],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100, 95, 101, 115, 99, 114, 111, 119]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness_account"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        },
+        {
+          "name": "randomness",
+          "type": {
+            "array": ["u8", 32]
+          }
+        }
+      ]
+    }
+  ]
+}
