@@ -45,13 +45,17 @@ export default function AdminPage() {
     ticketPrice: string;
     totalTickets: string;
     finishTs: string;
+    isFinished: boolean;
   }>({
     roundId: null,
     pot: "-",
     ticketPrice: "-",
     totalTickets: "-",
-    finishTs: "-"
+    finishTs: "-",
+    isFinished: false
   });
+  const [canFinishRound, setCanFinishRound] = useState(false);
+  const [timeUntilFinish, setTimeUntilFinish] = useState<string>("");
 
   // Загрузка информации о комиссиях и текущем раунде
   useEffect(() => {
@@ -69,13 +73,34 @@ export default function AdminPage() {
           const [roundPda] = PublicKey.findProgramAddressSync([Buffer.from("round"), new anchor.BN(currentRoundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
           const round = await lottery.account.round.fetch(roundPda);
           
+          const currentTime = Math.floor(Date.now() / 1000);
+          const finishTime = round.finishTimestamp.toNumber();
+          const isFinished = round.isFinished;
+          const canFinish = !isFinished && currentTime >= finishTime;
+          
+          // Вычисляем оставшееся время
+          let timeUntilFinishText = "";
+          if (!isFinished && currentTime < finishTime) {
+            const remainingSeconds = finishTime - currentTime;
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            timeUntilFinishText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          } else if (isFinished) {
+            timeUntilFinishText = "Завершен";
+          } else {
+            timeUntilFinishText = "Можно завершить";
+          }
+          
           setCurrentRoundInfo({
             roundId: currentRoundId,
             pot: (round.pot as anchor.BN).toString(),
             ticketPrice: (round.ticketPrice as anchor.BN).toString(),
             totalTickets: (round.totalTickets as anchor.BN).toString(),
-            finishTs: String(round.finishTimestamp)
+            finishTs: String(round.finishTimestamp),
+            isFinished
           });
+          setCanFinishRound(canFinish);
+          setTimeUntilFinish(timeUntilFinishText);
         }
       } catch (e) {
         console.error("Ошибка загрузки админской информации:", e);
@@ -84,6 +109,30 @@ export default function AdminPage() {
 
     loadAdminInfo();
   }, [lottery]);
+
+  // Таймер для обновления времени до завершения раунда
+  useEffect(() => {
+    if (!currentRoundInfo.roundId || currentRoundInfo.isFinished) return;
+    
+    const interval = setInterval(() => {
+      const currentTime = Math.floor(Date.now() / 1000);
+      const finishTime = Number(currentRoundInfo.finishTs);
+      
+      if (currentTime >= finishTime) {
+        setCanFinishRound(true);
+        setTimeUntilFinish("Можно завершить");
+        clearInterval(interval);
+      } else {
+        const remainingSeconds = finishTime - currentTime;
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+        setTimeUntilFinish(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+        setCanFinishRound(false);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [currentRoundInfo.roundId, currentRoundInfo.finishTs, currentRoundInfo.isFinished]);
 
   const createRound = async () => {
     if (!lottery) return;
@@ -141,13 +190,22 @@ export default function AdminPage() {
         throw new Error("Раунд уже завершен");
       }
       
+      // Проверяем, что время раунда истекло
+      const currentTime = Math.floor(Date.now() / 1000);
+      const finishTime = round.finishTimestamp.toNumber();
+      if (currentTime < finishTime) {
+        const remainingSeconds = finishTime - currentTime;
+        const remainingMinutes = Math.ceil(remainingSeconds / 60);
+        throw new Error(`Раунд еще не завершился. Осталось: ${remainingMinutes} минут (${remainingSeconds} секунд)`);
+      }
+      
       // Генерируем мок-случайность напрямую (упрощенный подход без реального Switchboard)
       const mockRandomness = Array.from(crypto.getRandomValues(new Uint8Array(32)));
       
-      // watcher referral PDAs
-      const watcherProgramId = new PublicKey((watcherIdl as { address: string }).address);
-      const referralEscrow = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId)[0];
-      const roundTotalProfit = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId)[0];
+      // watcher referral PDAs (временно не используются из-за проблем с переводами SOL)
+      // const watcherProgramId = new PublicKey((watcherIdl as { address: string }).address);
+      // const referralEscrow = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId)[0];
+      // const roundTotalProfit = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId)[0];
       
       // Генерируем победителей локально, используя ТУ ЖЕ логику, что и в контракте
       // Это позволит нам заранее знать, какие аккаунты передавать
@@ -224,10 +282,13 @@ export default function AdminPage() {
         payees.push(matchUser);
       }
       
-      // Подготавливаем remainingAccounts в правильном порядке
+      // Контракт ожидает: 2 referral аккаунта + 2 * количество_победителей
+      // Но у нас проблема с переводами SOL с PDA
+      // Попробуем передать системные аккаунты вместо PDA для referral части
       const remainingAccounts = [
-        { pubkey: referralEscrow, isSigner: false, isWritable: true },
-        { pubkey: roundTotalProfit, isSigner: false, isWritable: false },
+        // Вместо referral PDA передаем системные аккаунты
+        { pubkey: lottery.provider.publicKey!, isSigner: false, isWritable: true },  // вместо referralEscrow
+        { pubkey: lottery.provider.publicKey!, isSigner: false, isWritable: false }, // вместо roundTotalProfit
         ...purchases.flatMap((pk, i) => ([
           { pubkey: pk, isSigner: false, isWritable: false },
           { pubkey: payees[i], isSigner: false, isWritable: true },
@@ -436,16 +497,44 @@ export default function AdminPage() {
                     <Text fontSize="sm" color="gray.600">
                       Завершить текущий активный раунд лотереи
                     </Text>
+                    
+                    {/* Статус времени до завершения */}
+                    <div className="p-3 bg-gray-50 rounded-md">
+                      <div className="flex justify-between items-center">
+                        <Text fontSize="sm" color="gray.600">Статус раунда:</Text>
+                        <Text fontSize="sm" fontWeight="bold" color={canFinishRound ? "green.600" : "orange.600"}>
+                          {timeUntilFinish}
+                        </Text>
+                      </div>
+                      {currentRoundInfo.isFinished && (
+                        <Text fontSize="xs" color="gray.500" mt={1}>
+                          Раунд уже завершен
+                        </Text>
+                      )}
+                      {!currentRoundInfo.isFinished && !canFinishRound && (
+                        <Text fontSize="xs" color="gray.500" mt={1}>
+                          Ожидание окончания времени раунда
+                        </Text>
+                      )}
+                      {!currentRoundInfo.isFinished && canFinishRound && (
+                        <Text fontSize="xs" color="green.600" mt={1}>
+                          Время истекло, можно завершать раунд
+                        </Text>
+                      )}
+                    </div>
+                    
                     <Divider />
                     <Button
                       onClick={finishRoundWithRandomness}
-                      disabled={loading || !lottery}
-                      colorScheme="purple"
+                      disabled={loading || !lottery || !canFinishRound || currentRoundInfo.isFinished}
+                      colorScheme={canFinishRound && !currentRoundInfo.isFinished ? "purple" : "gray"}
                       leftIcon={loading ? <Spinner size="sm" /> : <Square size={16} />}
                       size="lg"
                       width="full"
                     >
-                      {loading ? "Завершение..." : "Завершить раунд"}
+                      {loading ? "Завершение..." : 
+                       currentRoundInfo.isFinished ? "Раунд завершен" :
+                       canFinishRound ? "Завершить раунд" : "Ожидание окончания времени"}
                     </Button>
                     <Text fontSize="xs" color="gray.500" textAlign="center">
                       Раунд будет завершен с использованием Switchboard VRF для честной генерации победителей
