@@ -12,16 +12,7 @@
       "docs": [
         "Отмена раунда при нуле покупок (закрытие аккаунта раунда)"
       ],
-      "discriminator": [
-        82,
-        70,
-        134,
-        54,
-        46,
-        96,
-        148,
-        8
-      ],
+      "discriminator": [82, 70, 134, 54, 46, 96, 148, 8],
       "accounts": [
         {
           "name": "lottery_state",
@@ -29,21 +20,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
+                "value": [108, 111, 116, 116, 101, 114, 121, 95, 115, 116, 97, 116, 101]
               }
             ]
           }
@@ -55,13 +32,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
+                "value": [114, 111, 117, 110, 100]
               },
               {
                 "kind": "arg",
@@ -74,400 +45,19 @@
           "name": "admin",
           "writable": true,
           "signer": true,
-          "relations": [
-            "lottery_state"
-          ]
+          "relations": ["lottery_state"]
         }
       ],
       "args": [
         {
           "name": "round_id",
           "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "claim_admin_fees",
-      "docs": [
-        "Вывод комиссий администратором (SOL)"
-      ],
-      "discriminator": [
-        68,
-        216,
-        128,
-        44,
-        49,
-        31,
-        91,
-        149
-      ],
-      "accounts": [
-        {
-          "name": "lottery_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "owner",
-          "signer": true,
-          "relations": [
-            "lottery_state"
-          ]
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "consume_randomness",
-      "docs": [
-        "Callback от Switchboard: сохраняем рандом и генерируем winning_tickets"
-      ],
-      "discriminator": [
-        190,
-        217,
-        49,
-        162,
-        99,
-        26,
-        73,
-        234
-      ],
-      "accounts": [
-        {
-          "name": "round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "round_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vrf_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  99,
-                  108,
-                  105,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "round_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vrf"
-        }
-      ],
-      "args": [
-        {
-          "name": "round_id",
-          "type": "u64"
-        },
-        {
-          "name": "randomness",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "finish_round",
-      "docs": [
-        "Завершение раунда: распределение SOL по победителям и комиссия"
-      ],
-      "discriminator": [
-        23,
-        104,
-        163,
-        186,
-        110,
-        225,
-        11,
-        242
-      ],
-      "accounts": [
-        {
-          "name": "lottery_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "round_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "admin",
-          "signer": true,
-          "relations": [
-            "lottery_state"
-          ]
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "round_id",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "init_vrf_client",
-      "docs": [
-        "Инициализация VRF-клиента для раунда"
-      ],
-      "discriminator": [
-        4,
-        73,
-        63,
-        122,
-        161,
-        36,
-        223,
-        68
-      ],
-      "accounts": [
-        {
-          "name": "round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "round_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vrf_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  99,
-                  108,
-                  105,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "round_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "round_id",
-          "type": "u64"
-        },
-        {
-          "name": "vrf",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "initialize",
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
-      "accounts": [
-        {
-          "name": "lottery_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "owner",
-          "type": "pubkey"
-        },
-        {
-          "name": "admin",
-          "type": "pubkey"
         }
       ]
     },
     {
       "name": "initialize_round",
-      "discriminator": [
-        43,
-        135,
-        19,
-        93,
-        14,
-        225,
-        131,
-        188
-      ],
+      "discriminator": [43, 135, 19, 93, 14, 225, 131, 188],
       "accounts": [
         {
           "name": "lottery_state",
@@ -476,21 +66,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
+                "value": [108, 111, 116, 116, 101, 114, 121, 95, 115, 116, 97, 116, 101]
               }
             ]
           }
@@ -502,13 +78,25 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
+                "value": [114, 111, 117, 110, 100]
+              },
+              {
+                "kind": "account",
+                "path": "lottery_state.latest_round_id.checked_add(1)",
+                "account": "LotteryState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": ["Escrow аккаунт для хранения SOL раунда"],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100, 95, 101, 115, 99, 114, 111, 119]
               },
               {
                 "kind": "account",
@@ -522,9 +110,7 @@
           "name": "admin",
           "writable": true,
           "signer": true,
-          "relations": [
-            "lottery_state"
-          ]
+          "relations": ["lottery_state"]
         },
         {
           "name": "system_program",
@@ -562,19 +148,8 @@
     },
     {
       "name": "play",
-      "docs": [
-        "Покупка билетов (оплата в SOL)"
-      ],
-      "discriminator": [
-        213,
-        157,
-        193,
-        142,
-        228,
-        56,
-        248,
-        150
-      ],
+      "docs": ["Покупка билетов (оплата в SOL)"],
+      "discriminator": [213, 157, 193, 142, 228, 56, 248, 150],
       "accounts": [
         {
           "name": "round",
@@ -583,13 +158,24 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
+                "value": [114, 111, 117, 110, 100]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": ["Escrow аккаунт для хранения SOL раунда (отдельно от PDA с данными)"],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100, 95, 101, 115, 99, 114, 111, 119]
               },
               {
                 "kind": "arg",
@@ -605,16 +191,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  112,
-                  117,
-                  114,
-                  99,
-                  104,
-                  97,
-                  115,
-                  101
-                ]
+                "value": [112, 117, 114, 99, 104, 97, 115, 101]
               },
               {
                 "kind": "arg",
@@ -679,34 +256,30 @@
       ]
     },
     {
-      "name": "request_on_demand_randomness",
-      "docs": [
-        "Запрос случайности через Switchboard On-Demand VRF"
-      ],
-      "discriminator": [
-        146,
-        145,
-        162,
-        229,
-        141,
-        144,
-        115,
-        53
-      ],
+      "name": "settle_on_demand_randomness",
+      "docs": ["Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"],
+      "discriminator": [147, 4, 137, 96, 249, 227, 98, 48],
       "accounts": [
         {
-          "name": "round",
+          "name": "lottery_state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
+                "value": [108, 111, 116, 116, 101, 114, 121, 95, 115, 116, 97, 116, 101]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [114, 111, 117, 110, 100]
               },
               {
                 "kind": "arg",
@@ -716,86 +289,14 @@
           }
         },
         {
-          "name": "randomness_account",
-          "writable": true
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "switchboard_on_demand_program",
-          "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "round_id",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "settle_on_demand_randomness",
-      "docs": [
-        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
-      ],
-      "discriminator": [
-        147,
-        4,
-        137,
-        96,
-        249,
-        227,
-        98,
-        48
-      ],
-      "accounts": [
-        {
-          "name": "lottery_state",
+          "name": "round_escrow",
+          "docs": ["Escrow аккаунт для хранения SOL раунда"],
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
-                  114,
-                  121,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
+                "value": [114, 111, 117, 110, 100, 95, 101, 115, 99, 114, 111, 119]
               },
               {
                 "kind": "arg",
@@ -820,467 +321,10 @@
         {
           "name": "randomness",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         }
       ]
-    }
-  ],
-  "accounts": [
-    {
-      "name": "LotteryState",
-      "discriminator": [
-        196,
-        210,
-        202,
-        219,
-        204,
-        63,
-        133,
-        85
-      ]
-    },
-    {
-      "name": "Purchase",
-      "discriminator": [
-        33,
-        203,
-        1,
-        252,
-        231,
-        228,
-        8,
-        67
-      ]
-    },
-    {
-      "name": "Round",
-      "discriminator": [
-        87,
-        127,
-        165,
-        51,
-        73,
-        78,
-        116,
-        174
-      ]
-    },
-    {
-      "name": "VrfClientState",
-      "discriminator": [
-        173,
-        240,
-        159,
-        11,
-        226,
-        117,
-        124,
-        97
-      ]
-    }
-  ],
-  "events": [
-    {
-      "name": "NewRoundInitialized",
-      "discriminator": [
-        20,
-        177,
-        197,
-        31,
-        194,
-        14,
-        225,
-        254
-      ]
-    },
-    {
-      "name": "RandomnessRequested",
-      "discriminator": [
-        10,
-        64,
-        183,
-        29,
-        104,
-        63,
-        90,
-        149
-      ]
-    },
-    {
-      "name": "RandomnessSettled",
-      "discriminator": [
-        219,
-        235,
-        45,
-        239,
-        116,
-        19,
-        92,
-        74
-      ]
-    },
-    {
-      "name": "RoundCanceled",
-      "discriminator": [
-        183,
-        233,
-        3,
-        121,
-        24,
-        77,
-        193,
-        199
-      ]
-    },
-    {
-      "name": "RoundFinished",
-      "discriminator": [
-        219,
-        203,
-        57,
-        176,
-        225,
-        115,
-        234,
-        93
-      ]
-    },
-    {
-      "name": "TicketPurchased",
-      "discriminator": [
-        108,
-        59,
-        246,
-        95,
-        84,
-        145,
-        13,
-        71
-      ]
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "InvalidRoundTiming",
-      "msg": "Неверное время раунда"
-    },
-    {
-      "code": 6001,
-      "name": "InvalidTicketPrice",
-      "msg": "Неверная цена билета"
-    },
-    {
-      "code": 6002,
-      "name": "InvalidFee",
-      "msg": "Неверная комиссия"
-    },
-    {
-      "code": 6003,
-      "name": "InvalidRewardSharing",
-      "msg": "Неверное распределение наград"
-    },
-    {
-      "code": 6004,
-      "name": "RoundNotInProgress",
-      "msg": "Раунд не в процессе"
-    },
-    {
-      "code": 6005,
-      "name": "RoundNotFinished",
-      "msg": "Раунд не завершен"
-    },
-    {
-      "code": 6006,
-      "name": "Unauthorized",
-      "msg": "Нет авторизации"
-    },
-    {
-      "code": 6007,
-      "name": "Overflow",
-      "msg": "Переполнение"
-    },
-    {
-      "code": 6008,
-      "name": "RoundHasPurchases",
-      "msg": "Нельзя отменить раунд: есть покупки"
-    }
-  ],
-  "types": [
-    {
-      "name": "LotteryState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "owner",
-            "type": "pubkey"
-          },
-          {
-            "name": "admin",
-            "type": "pubkey"
-          },
-          {
-            "name": "latest_round_id",
-            "type": "u64"
-          },
-          {
-            "name": "fee_balance",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "NewRoundInitialized",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "start_timestamp",
-            "type": "i64"
-          },
-          {
-            "name": "finish_timestamp",
-            "type": "i64"
-          },
-          {
-            "name": "ticket_price",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "Purchase",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "user",
-            "type": "pubkey"
-          },
-          {
-            "name": "ticket_count",
-            "type": "u64"
-          },
-          {
-            "name": "cumulative_tickets",
-            "type": "u64"
-          },
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "purchase_index",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RandomnessRequested",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "randomness_account",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RandomnessSettled",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "winning_tickets",
-            "type": {
-              "vec": "u64"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "Round",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "start_timestamp",
-            "type": "i64"
-          },
-          {
-            "name": "finish_timestamp",
-            "type": "i64"
-          },
-          {
-            "name": "fee_bps",
-            "type": "u16"
-          },
-          {
-            "name": "winners_count",
-            "type": "u16"
-          },
-          {
-            "name": "reward_sharing_bps",
-            "type": {
-              "vec": "u16"
-            }
-          },
-          {
-            "name": "ticket_price",
-            "type": "u64"
-          },
-          {
-            "name": "is_finished",
-            "type": "bool"
-          },
-          {
-            "name": "total_tickets",
-            "type": "u64"
-          },
-          {
-            "name": "pot",
-            "type": "u64"
-          },
-          {
-            "name": "purchase_count",
-            "type": "u64"
-          },
-          {
-            "name": "winning_tickets",
-            "type": {
-              "vec": "u64"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RoundCanceled",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RoundFinished",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "pot",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TicketPurchased",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "start_ticket",
-            "type": "u64"
-          },
-          {
-            "name": "end_ticket",
-            "type": "u64"
-          },
-          {
-            "name": "ticket_count",
-            "type": "u64"
-          },
-          {
-            "name": "user",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "VrfClientState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "round_id",
-            "type": "u64"
-          },
-          {
-            "name": "vrf",
-            "type": "pubkey"
-          },
-          {
-            "name": "randomness",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
     }
   ]
 }

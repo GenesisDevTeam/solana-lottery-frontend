@@ -216,35 +216,31 @@ export default function Home() {
         };
       }
 
+      // Подготавливаем roundEscrow PDA
+      const [roundEscrowPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("round_escrow"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], 
+        lottery.programId
+      );
+
+      const playAccounts = {
+        round: roundPda,
+        roundEscrow: roundEscrowPda,
+        purchase: purchasePda,
+        user: userPk,
+        watcherState: accountsReferralPart.watcherState,
+        userRefForPlayer: accountsReferralPart.userRefForPlayer,
+        referrerSettingsForPlayer: accountsReferralPart.referrerSettingsForPlayer,
+        lotteryProgram: lottery.programId,
+        watcherProgram: watcher.programId,
+        profitForRound: accountsReferralPart.profitForRound,
+        roundTotalProfit: accountsReferralPart.roundTotalProfit,
+        referralEscrow: accountsReferralPart.referralEscrow,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      };
+      
       await lottery.methods
         .play(new anchor.BN(roundId), new anchor.BN(ticketCount))
-        .accounts({
-          round: roundPda,
-          purchase: purchasePda,
-          user: userPk,
-          watcherState: accountsReferralPart.watcherState,
-          userRefForPlayer: accountsReferralPart.userRefForPlayer,
-          referrerSettingsForPlayer: accountsReferralPart.referrerSettingsForPlayer,
-          lotteryProgram: lottery.programId,
-          watcherProgram: watcher.programId,
-          profitForRound: accountsReferralPart.profitForRound,
-          roundTotalProfit: accountsReferralPart.roundTotalProfit,
-          referralEscrow: accountsReferralPart.referralEscrow,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        } as {
-          round: PublicKey;
-          purchase: PublicKey;
-          user: PublicKey;
-          watcherState: PublicKey;
-          userRefForPlayer: PublicKey;
-          referrerSettingsForPlayer: PublicKey;
-          lotteryProgram: PublicKey;
-          watcherProgram: PublicKey;
-          profitForRound: PublicKey;
-          roundTotalProfit: PublicKey;
-          referralEscrow: PublicKey;
-          systemProgram: PublicKey;
-        })
+        .accounts(playAccounts as never)
         .rpc();
       toast({
         title: "Билеты куплены",

@@ -26,7 +26,6 @@ import {
   Divider
 } from "@chakra-ui/react";
 import { Settings, Play, Square, DollarSign } from "lucide-react";
-import watcherIdl from "@/idl/watcher_referral.json";
 import { useEffect } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
@@ -146,9 +145,16 @@ export default function AdminPage() {
       const now = Math.floor(Date.now() / 1000);
       const startTs = now + 30;
       const finishTs = now + parseInt(duration, 10);
+      const initAccounts = { 
+        lotteryState, 
+        round: roundPda,
+        admin: lottery.provider.publicKey!,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      };
+      
       await lottery.methods
         .initializeRound(new anchor.BN(startTs), new anchor.BN(finishTs), parseInt(feeBps, 10), 1, [10000], new anchor.BN(ticketPrice))
-        .accounts({ lotteryState, round: roundPda })
+        .accounts(initAccounts as never)
         .rpc();
       toast({
         title: "Раунд создан",
@@ -295,15 +301,18 @@ export default function AdminPage() {
         ])),
       ];
       
+
       // Вызываем settle_on_demand_randomness с правильными аккаунтами
+      const settleAccounts = {
+        lotteryState,
+        round: roundPda,
+        randomnessAccount: anchor.web3.SystemProgram.programId,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      };
+      
       await lottery.methods
         .settleOnDemandRandomness(new anchor.BN(roundId), mockRandomness)
-        .accountsPartial({
-          lotteryState,
-          round: roundPda,
-          randomnessAccount: anchor.web3.SystemProgram.programId,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
+        .accounts(settleAccounts as never)
         .remainingAccounts(remainingAccounts)
         .rpc();
       
