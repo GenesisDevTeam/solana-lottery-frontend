@@ -7,13 +7,14 @@ import { useAnchor, ids, getRoundWinners, type RoundWinners } from "@/lib/anchor
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { WalletGate } from "@/components/WalletGate";
 import { explorerAddressUrl } from "../lib/utils";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { IconButton } from "@/components/ui/icon-button";
-import { Copy, ExternalLink, Ticket, Users, Settings, Gift, UserPlus, Code, Trophy, Clock } from "lucide-react";
+import { Copy, ExternalLink, Ticket, Users, Settings, Gift, UserPlus, Code, Trophy, Clock, Shield } from "lucide-react";
 import { 
   Box, 
   VStack, 
@@ -402,7 +403,19 @@ export default function Home() {
               Live
             </Badge>
           </HStack>
-          <WalletMultiButton />
+          <HStack spacing={3}>
+            <Link href="/admin">
+              <Button 
+                colorScheme="purple" 
+                variant="outline"
+                leftIcon={<Shield size={16} />}
+                size="md"
+              >
+                Админка
+              </Button>
+            </Link>
+            <WalletMultiButton />
+          </HStack>
         </HStack>
         <WalletGate>
           <VStack spacing={8} align="stretch" maxW="4xl" mx="auto">
