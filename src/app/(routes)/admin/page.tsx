@@ -26,6 +26,7 @@ import {
   Divider
 } from "@chakra-ui/react";
 import { Settings, Play, Square, DollarSign } from "lucide-react";
+import Link from "next/link";
 import { useEffect } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
@@ -207,60 +208,15 @@ export default function AdminPage() {
         throw new Error(`Раунд еще не завершился. Осталось: ${remainingMinutes} минут (${remainingSeconds} секунд)`);
       }
       
-      // Генерируем мок-случайность напрямую (упрощенный подход без реального Switchboard)
-      const mockRandomness = Array.from(crypto.getRandomValues(new Uint8Array(32)));
-      
-      // watcher referral PDAs (временно не используются из-за проблем с переводами SOL)
-      // const watcherProgramId = new PublicKey((watcherIdl as { address: string }).address);
-      // const referralEscrow = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId)[0];
-      // const roundTotalProfit = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId)[0];
-      
-      // Генерируем победителей локально, используя ТУ ЖЕ логику, что и в контракте
-      // Это позволит нам заранее знать, какие аккаунты передавать
-      const winnersCount = round.winnersCount;
+      // Если есть билеты, нужно найти владельцев для выплат
       const totalTickets = (round.totalTickets as anchor.BN).toNumber();
       
-      // Повторяем логику контракта для генерации победителей
-      const winningTickets: number[] = [];
+      let remainingAccounts: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean; }[] = [];
+      
       if (totalTickets > 0) {
-        for (let i = 0; i < winnersCount; i++) {
-          let salt = i;
-          while (true) {
-            // Используем ту же логику хеширования, что и в контракте
-            const saltBytes = new Uint8Array(8);
-            const view = new DataView(saltBytes.buffer);
-            view.setBigUint64(0, BigInt(salt), true); // little endian
-            
-            // Создаем hash (упрощенная версия keccak)
-            const combined = new Uint8Array(mockRandomness.length + saltBytes.length);
-            combined.set(mockRandomness);
-            combined.set(saltBytes, mockRandomness.length);
-            
-            // Простое хеширование для демонстрации
-            let hash = 0;
-            for (let j = 0; j < combined.length; j++) {
-              hash = ((hash << 5) - hash + combined[j]) & 0xffffffff;
-            }
-            
-            const num = (Math.abs(hash) % totalTickets) + 1;
-            
-            if (!winningTickets.includes(num)) {
-              winningTickets.push(num);
-              break;
-            }
-            salt++;
-          }
-        }
-      }
-      
-      // Теперь находим владельцев выигрышных билетов
-      const purchaseCount = (round.purchaseCount as anchor.BN).toNumber();
-      const purchases: PublicKey[] = [];
-      const payees: PublicKey[] = [];
-      
-      for (const ticket of winningTickets) {
-        let matchPk: PublicKey | null = null;
-        let matchUser: PublicKey | null = null;
+        // Получаем все покупки для поиска победителей после генерации случайности в контракте
+        const purchaseCount = (round.purchaseCount as anchor.BN).toNumber();
+        const allPurchases: Array<{ pda: PublicKey; user: PublicKey; start: number; end: number }> = [];
         
         for (let idx = 0; idx < purchaseCount; idx++) {
           const purchasePda = PublicKey.findProgramAddressSync([
@@ -273,56 +229,57 @@ export default function AdminPage() {
             const p = await lottery.account.purchase.fetch(purchasePda);
             const end = (p.cumulativeTickets as anchor.BN).toNumber();
             const start = end - (p.ticketCount as anchor.BN).toNumber() + 1;
-            
-            if (ticket >= start && ticket <= end) {
-              matchPk = purchasePda;
-              matchUser = p.user as PublicKey;
-              break;
-            }
+            allPurchases.push({ pda: purchasePda, user: p.user as PublicKey, start, end });
           } catch {}
         }
         
-        if (!matchPk || !matchUser) {
-          throw new Error(`Не найден владелец билета ${ticket}`);
-        }
+        // Передаём все покупки и пользователей как remaining accounts
+        // Контракт сам определит победителей и сделает выплаты
+        const watcherProgramId = new PublicKey("j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf");
+        const [referralEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId);
+        const [roundTotalProfitPda] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId);
         
-        purchases.push(matchPk);
-        payees.push(matchUser);
+        remainingAccounts = [
+          // Сначала referral accounts
+          { pubkey: referralEscrowPda, isSigner: false, isWritable: true },
+          { pubkey: roundTotalProfitPda, isSigner: false, isWritable: false },
+          // Затем все покупки и пользователи (контракт сам выберет победителей)
+          ...allPurchases.flatMap(p => [
+            { pubkey: p.pda, isSigner: false, isWritable: false },
+            { pubkey: p.user, isSigner: false, isWritable: true },
+          ]),
+        ];
+      } else {
+        // Если билетов нет, передаём только referral accounts
+        const watcherProgramId = new PublicKey("j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf");
+        const [referralEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId);
+        const [roundTotalProfitPda] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId);
+        
+        remainingAccounts = [
+          { pubkey: referralEscrowPda, isSigner: false, isWritable: true },
+          { pubkey: roundTotalProfitPda, isSigner: false, isWritable: false },
+        ];
       }
       
-      // Контракт ожидает: 2 referral аккаунта + 2 * количество_победителей
-      // Но у нас проблема с переводами SOL с PDA
-      // Попробуем передать системные аккаунты вместо PDA для referral части
-      const remainingAccounts = [
-        // Вместо referral PDA передаем системные аккаунты
-        { pubkey: lottery.provider.publicKey!, isSigner: false, isWritable: true },  // вместо referralEscrow
-        { pubkey: lottery.provider.publicKey!, isSigner: false, isWritable: false }, // вместо roundTotalProfit
-        ...purchases.flatMap((pk, i) => ([
-          { pubkey: pk, isSigner: false, isWritable: false },
-          { pubkey: payees[i], isSigner: false, isWritable: true },
-        ])),
-      ];
-      
-
-      // Вызываем settle_on_demand_randomness с правильными аккаунтами
       const [roundEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("round_escrow"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+      
+      // Используем упрощённую функцию settle_round_simple
       const settleAccounts = {
         lotteryState,
         round: roundPda,
         roundEscrow: roundEscrowPda,
-        randomnessAccount: anchor.web3.SystemProgram.programId,
         systemProgram: anchor.web3.SystemProgram.programId,
       };
       
       await lottery.methods
-        .settleOnDemandRandomness(new anchor.BN(roundId), mockRandomness)
+        .settleRoundSimple(new anchor.BN(roundId))
         .accounts(settleAccounts as never)
         .remainingAccounts(remainingAccounts)
         .rpc();
       
       toast({
         title: "Раунд завершен",
-        description: `Раунд #${roundId} успешно завершен с генерацией случайности`,
+        description: `Раунд #${roundId} успешно завершен с детерминированной генерацией случайности`,
         status: "success",
         duration: 5000,
         isClosable: true,
@@ -387,7 +344,12 @@ export default function AdminPage() {
             <Settings size={24} color="#9945FF" />
             <Heading size="lg" color="gray.800">Админ панель</Heading>
           </HStack>
-          <WalletMultiButton />
+          <HStack spacing={3}>
+            <Link href="/">
+              <Button colorScheme="purple" size="md">На главную</Button>
+            </Link>
+            <WalletMultiButton />
+          </HStack>
         </HStack>
 
         {/* Error Alert */}
@@ -550,7 +512,7 @@ export default function AdminPage() {
                        canFinishRound ? "Завершить раунд" : "Ожидание окончания времени"}
                     </Button>
                     <Text fontSize="xs" color="gray.500" textAlign="center">
-                      Раунд будет завершен с использованием Switchboard VRF для честной генерации победителей
+                      Раунд будет завершен с детерминированной генерацией случайности на основе timestamp
                     </Text>
                   </div>
                 </div>

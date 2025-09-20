@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PublicKey, LAMPORTS_PER_SOL, Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
 import * as anchor from "@coral-xyz/anchor";
+import { keccak256 } from "js-sha3";
 import { useAnchor, ids, getRoundWinners, type RoundWinners } from "@/lib/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { WalletGate } from "@/components/WalletGate";
@@ -24,6 +26,9 @@ import {
   Spinner,
   Badge,
   Divider,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
   useToast
 } from "@chakra-ui/react";
 
@@ -97,16 +102,32 @@ export default function Home() {
         if (watcher && lottery.provider.publicKey) {
           const [userRefPda] = PublicKey.findProgramAddressSync([Buffer.from("user_ref"), lottery.provider.publicKey.toBuffer()], watcher.programId);
           const userRef = await watcher.account.userReferral.fetchNullable(userRefPda);
+          
           if (userRef) {
+            // Пользователь зарегистрирован по чужому коду
             setRegistered(true);
             const data = userRef as unknown as { referrer: PublicKey; referrerCode: number[] };
             setReferrer(data.referrer.toBase58());
             const hex = Buffer.from(data.referrerCode).toString("hex");
             setRefCodeHex(hex);
           } else {
+            // Пользователь не зарегистрирован по чужому коду
             setRegistered(false);
             setReferrer(null);
-            setRefCodeHex(null);
+            
+            // Проверяем, есть ли у пользователя собственный сгенерированный код
+            const [codeRefPda] = PublicKey.findProgramAddressSync([Buffer.from("code"), lottery.provider.publicKey.toBuffer()], watcher.programId);
+            const codeRef = await watcher.account.codeRef.fetchNullable(codeRefPda);
+            
+            if (codeRef) {
+              // У пользователя есть собственный сгенерированный код
+              const data = codeRef as unknown as { codeHash: number[] };
+              const hex = Buffer.from(data.codeHash).toString("hex");
+              setRefCodeHex(hex);
+            } else {
+              // У пользователя нет ни собственного кода, ни регистрации по чужому
+              setRefCodeHex(null);
+            }
           }
         }
         // дефолты партнёрки
@@ -267,11 +288,18 @@ export default function Home() {
     if (!watcher || !watcher.provider.publicKey) return;
     try {
       setLoading(true);
-      const bytes = anchor.web3.Keypair.generate().publicKey.toBytes();
-      const codeHash = Buffer.from(bytes);
+      // Генерируем codeHash как keccak хеш от публичного ключа пользователя
+      // Это должно соответствовать функции keccak_code в контракте
+      const userPubkey = watcher.provider.publicKey;
+      
+      // Байты публичного ключа пользователя
+      const userBytes = userPubkey.toBytes();
+      // keccak256 от байт публичного ключа (совпадает с hashv в контракте)
+      const hashArr = keccak256.array(userBytes); // number[] длиной 32
+      const codeHash = Uint8Array.from(hashArr);
       const [statePda] = PublicKey.findProgramAddressSync([Buffer.from("watcher_state")], watcher.programId);
       const [codeRefPda] = PublicKey.findProgramAddressSync([Buffer.from("code"), watcher.provider.publicKey.toBuffer()], watcher.programId);
-      const [codeIndexPda] = PublicKey.findProgramAddressSync([Buffer.from("code_hash"), codeHash], watcher.programId);
+      const [codeIndexPda] = PublicKey.findProgramAddressSync([Buffer.from("code_hash"), Buffer.from(codeHash)], watcher.programId);
       await watcher.methods
         .generateReferralCode(Array.from(codeHash))
         .accounts({
@@ -288,7 +316,7 @@ export default function Home() {
           systemProgram: PublicKey;
         })
         .rpc();
-      const hex = codeHash.toString("hex");
+      const hex = Buffer.from(codeHash).toString("hex");
       setRefCodeHex(hex);
       toast({
         title: "Код сгенерирован",
@@ -297,6 +325,17 @@ export default function Home() {
         duration: 5000,
         isClosable: true,
       });
+      
+      // Перезагружаем реферальное состояние
+      if (watcher && lottery?.provider.publicKey) {
+        const [codeRefPda] = PublicKey.findProgramAddressSync([Buffer.from("code"), lottery.provider.publicKey.toBuffer()], watcher.programId);
+        const codeRef = await watcher.account.codeRef.fetchNullable(codeRefPda);
+        if (codeRef) {
+          const data = codeRef as unknown as { codeHash: number[] };
+          const hex = Buffer.from(data.codeHash).toString("hex");
+          setRefCodeHex(hex);
+        }
+      }
     } catch (e) {
       const err = e as Error & { message?: string };
       toast({
@@ -335,6 +374,26 @@ export default function Home() {
       const codeIndex = await watcher.account.codeIndex.fetch(codeIndexPda);
       const referrer = (codeIndex as unknown as { owner: PublicKey }).owner as PublicKey;
       const [referrerSettingsPda] = PublicKey.findProgramAddressSync([Buffer.from("referrer"), referrer.toBuffer()], watcher.programId);
+      
+      // Получаем signer из состояния watcher
+      const watcherState = await watcher.account.watcherState.fetch(statePda);
+      const backendSignerPubkey = (watcherState as unknown as { signer: PublicKey }).signer;
+      
+      // Создаем Keypair из приватного ключа для backend_signer
+      const backendSignerSecret = process.env.NEXT_PUBLIC_BACKEND_SIGNER_SECRET;
+      if (!backendSignerSecret) {
+        throw new Error("NEXT_PUBLIC_BACKEND_SIGNER_SECRET не найден в переменных окружения");
+      }
+      
+      const backendSignerKeypair = Keypair.fromSecretKey(
+        bs58.decode(backendSignerSecret)
+      );
+      
+      // Проверяем, что публичный ключ совпадает
+      if (!backendSignerKeypair.publicKey.equals(backendSignerPubkey)) {
+        throw new Error(`Публичный ключ backend signer не совпадает: ожидался ${backendSignerPubkey.toBase58()}, получен ${backendSignerKeypair.publicKey.toBase58()}`);
+      }
+      
       await watcher.methods
         .registerWithReferral(Array.from(codeHash))
         .accounts({
@@ -344,7 +403,7 @@ export default function Home() {
           registrationStats: registrationStatsPda,
           referrerSettings: referrerSettingsPda,
           user: userPk,
-          backendSigner: userPk,
+          backendSigner: backendSignerPubkey,
           systemProgram: anchor.web3.SystemProgram.programId,
         } as {
           state: PublicKey;
@@ -356,6 +415,7 @@ export default function Home() {
           backendSigner: PublicKey;
           systemProgram: PublicKey;
         })
+        .signers([backendSignerKeypair])
         .rpc();
       toast({
         title: "Регистрация выполнена",
@@ -372,6 +432,20 @@ export default function Home() {
         const data = userRef as unknown as { referrer: PublicKey; referrerCode: number[] };
         setReferrer(data.referrer.toBase58());
         setRefCodeHex(Buffer.from(data.referrerCode).toString("hex"));
+      } else {
+        setRegistered(false);
+        setReferrer(null);
+        
+        // Проверяем собственный код
+        const [codeRefPda] = PublicKey.findProgramAddressSync([Buffer.from("code"), userPk.toBuffer()], watcher.programId);
+        const codeRef = await watcher.account.codeRef.fetchNullable(codeRefPda);
+        if (codeRef) {
+          const data = codeRef as unknown as { codeHash: number[] };
+          const hex = Buffer.from(data.codeHash).toString("hex");
+          setRefCodeHex(hex);
+        } else {
+          setRefCodeHex(null);
+        }
       }
     } catch (e) {
       const err = e as Error & { message?: string };
@@ -395,7 +469,7 @@ export default function Home() {
           <HStack spacing={3}>
             <Gift size={28} color="#9945FF" />
             <Heading size="xl" color="gray.800">Solana Lottery</Heading>
-            <Badge colorScheme="purple" variant="subtle" fontSize="sm">
+            <Badge bg="#14F195" color="#023430" variant="subtle" fontSize="sm">
               Live
             </Badge>
           </HStack>
@@ -403,9 +477,9 @@ export default function Home() {
             <Link href="/admin">
               <Button 
                 colorScheme="purple" 
-                variant="outline"
+                variant="solid"
                 leftIcon={<Shield size={16} />}
-                size="md"
+                size="lg"
               >
                 Админка
               </Button>
@@ -414,7 +488,7 @@ export default function Home() {
           </HStack>
         </HStack>
         <WalletGate>
-          <VStack spacing={8} align="stretch" maxW="4xl" mx="auto">
+          <VStack spacing={8} align="stretch" maxW="5xl" mx="auto">
             <div className="grid grid-cols-1 gap-8">
               {/* Состояние контракта */}
               <Card minH="400px">
@@ -435,14 +509,14 @@ export default function Home() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Owner:</span>
                       <span className="break-all">{lotteryOwner ?? "-"}</span>
-                      {lotteryOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                       {lotteryOwner && <IconButton onClick={() => copy(lotteryOwner!)} aria-label="copy-owner"><Copy size={14} /></IconButton>}
+                      {lotteryOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Admin:</span>
                       <span className="break-all">{lotteryAdmin ?? "-"}</span>
-                      {lotteryAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                       {lotteryAdmin && <IconButton onClick={() => copy(lotteryAdmin!)} aria-label="copy-admin"><Copy size={14} /></IconButton>}
+                      {lotteryAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(lotteryAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                     </div>
                     <div className="opacity-70">Fee balance (lamports): {feeBalance}</div>
                   </div>
@@ -455,7 +529,7 @@ export default function Home() {
                     <div className="flex gap-4"><span className="opacity-70">Куплено билетов:</span><span className="font-medium">{totalTickets}</span></div>
                     <div className="flex gap-4"><span className="opacity-70">Победителей:</span><span className="font-medium">{winnersCount}</span></div>
                     <div className="flex gap-4"><span className="opacity-70">Финиш:</span><span className="font-medium">{finishTs !== "-" ? new Date(Number(finishTs) * 1000).toLocaleString() : '-'}</span></div>
-                    <div className="flex gap-4"><span className="opacity-70">Referral total:</span><span className="font-medium">{roundReferralTotal}</span></div>
+                    <div className="flex gap-4"><span className="opacity-70">Referral total:</span><span className="font-medium">{roundReferralTotal !== "-" ? `${(Number(roundReferralTotal) / LAMPORTS_PER_SOL).toFixed(6)} SOL` : '-'}</span></div>
                   </div>
                 </div>
           </Card>
@@ -481,9 +555,10 @@ export default function Home() {
                           </div>
                           <div className="flex gap-4">
                             <span className="opacity-70">Статус:</span>
-                            <Badge colorScheme={roundWinners.isFinished ? "green" : "yellow"} variant="subtle">
-                              {roundWinners.isFinished ? "Завершен" : "Активен"}
-                            </Badge>
+                    <Tag size="md" variant="subtle" bg={roundWinners.isFinished ? "#E6FFF4" : "#FFF7E6"} color={roundWinners.isFinished ? "#046C4E" : "#7A4F01"} borderRadius="full">
+                      <TagLeftIcon boxSize="12px" as={roundWinners.isFinished ? Trophy : Clock} />
+                      <TagLabel>{roundWinners.isFinished ? "Завершен" : "Активен"}</TagLabel>
+                    </Tag>
                           </div>
                           <div className="flex gap-4">
                             <span className="opacity-70">Общий пот:</span>
@@ -495,14 +570,15 @@ export default function Home() {
                             <span className="opacity-70">Всего билетов:</span>
                             <span className="font-medium">{roundWinners.totalTickets}</span>
                           </div>
-                          <div className="flex gap-4">
+                          <div className="flex items-center gap-4">
                             <span className="opacity-70">Завершен:</span>
-                            <span className="font-medium">
-                              {roundWinners.isFinished ? 
-                                new Date(roundWinners.finishTimestamp * 1000).toLocaleString() : 
-                                "В процессе"
-                              }
-                            </span>
+                            <Tag size="sm" variant="subtle" bg={roundWinners.isFinished ? "#E6FFF4" : "#FFF7E6"} color={roundWinners.isFinished ? "#046C4E" : "#7A4F01"} borderRadius="full">
+                              <TagLeftIcon boxSize="12px" as={roundWinners.isFinished ? Trophy : Clock} />
+                              <TagLabel>{roundWinners.isFinished ? "Завершен" : "В процессе"}</TagLabel>
+                            </Tag>
+                            {roundWinners.isFinished && (
+                              <span className="text-xs opacity-70">{new Date(roundWinners.finishTimestamp * 1000).toLocaleString()}</span>
+                            )}
                           </div>
                         </div>
                         
@@ -608,23 +684,8 @@ export default function Home() {
                     <CardTitle>Покупка билетов</CardTitle>
                   </HStack>
                 </CardHeader>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 pt-6">
                   <VStack spacing={6} align="stretch">
-                    <Box>
-                      <Label className="mb-2 block text-lg">Количество билетов</Label>
-                      <HStack spacing={4}>
-                        <Input 
-                          type="number" 
-                          min={1} 
-                          value={ticketCount} 
-                          onChange={(e) => setTicketCount(Number(e.target.value))}
-                          className="max-w-[150px] text-lg"
-                        />
-                        <Text fontSize="lg" color="gray.500" fontWeight="medium">
-                          {ticketCount} шт.
-                        </Text>
-                      </HStack>
-                    </Box>
                     
                     <VStack spacing={4} align="stretch">
                       <HStack justify="space-between" p={3} bg="gray.50" borderRadius="md">
@@ -643,19 +704,28 @@ export default function Home() {
                   </VStack>
                   
                   <VStack spacing={6} align="stretch" justify="center">
-                    <Box textAlign="center">
-                      <Text fontSize="lg" color="gray.600" mb={4}>
-                        Готовы участвовать в лотерее?
-                      </Text>
+                    <Box>
+                      <Label className="mb-2 block text-lg">Количество билетов</Label>
+                      <HStack spacing={4} mb={4}>
+                        <Input 
+                          type="number" 
+                          min={1} 
+                          value={ticketCount} 
+                          onChange={(e) => setTicketCount(Number(e.target.value))}
+                          className="max-w-[180px] text-lg"
+                        />
+                        <Text fontSize="md" color="gray.600" fontWeight="medium">
+                          {ticketCount} шт.
+                        </Text>
+                      </HStack>
                       <Button 
                         onClick={onBuy} 
                         disabled={buyDisabled}
                         colorScheme="purple"
-                        size="xl"
+                        size="lg"
                         leftIcon={loading ? <Spinner size="sm" /> : <Ticket size={20} />}
                         width="full"
-                        height="60px"
-                        fontSize="lg"
+                        fontSize="md"
                       >
                         {loading ? "Покупка..." : "Купить билеты"}
                       </Button>
@@ -683,33 +753,43 @@ export default function Home() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Owner:</span>
                       <span className="break-all">{watcherOwner ?? '-'}</span>
-                      {watcherOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                       {watcherOwner && <IconButton onClick={() => copy(watcherOwner!)} aria-label="copy-w-owner"><Copy size={14} /></IconButton>}
+                      {watcherOwner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherOwner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Admin:</span>
                       <span className="break-all">{watcherAdmin ?? '-'}</span>
-                      {watcherAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                       {watcherAdmin && <IconButton onClick={() => copy(watcherAdmin!)} aria-label="copy-w-admin"><Copy size={14} /></IconButton>}
+                      {watcherAdmin && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherAdmin)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Signer:</span>
                       <span className="break-all">{watcherSigner ?? '-'}</span>
-                      {watcherSigner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherSigner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                       {watcherSigner && <IconButton onClick={() => copy(watcherSigner!)} aria-label="copy-w-signer"><Copy size={14} /></IconButton>}
+                      {watcherSigner && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherSigner)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Lottery linked:</span>
                       <span className="break-all">{watcherLottery ?? '-'}</span>
-                      {watcherLottery && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherLottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                       {watcherLottery && <IconButton onClick={() => copy(watcherLottery!)} aria-label="copy-w-lottery"><Copy size={14} /></IconButton>}
+                      {watcherLottery && <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(watcherLottery)} target="_blank" rel="noreferrer">Explorer<ExternalLink size={14} /></a>}
                     </div>
                   </div>
                   
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Настройки партнерки</h3>
-                    <div className="flex gap-4"><span className="opacity-70">Default profit bps:</span><span className="font-medium">{watcherDefaults ? watcherDefaults.bps : "-"}</span></div>
-                    <div className="flex gap-4"><span className="opacity-70">Default daily reg. limit:</span><span className="font-medium">{watcherDefaults ? watcherDefaults.limit : "-"}</span></div>
+                    <div className="flex items-center gap-3">
+                      <span className="opacity-70">Default profit bps:</span>
+                      <Tag size="sm" variant="subtle" bg="#F0ECFF" color="#3D2C8D" borderRadius="full">
+                        <TagLabel>{watcherDefaults ? watcherDefaults.bps : "-"}</TagLabel>
+                      </Tag>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="opacity-70">Default daily reg. limit:</span>
+                      <Tag size="sm" variant="subtle" bg="#E6FFF4" color="#046C4E" borderRadius="full">
+                        <TagLabel>{watcherDefaults ? watcherDefaults.limit : "-"}</TagLabel>
+                      </Tag>
+                    </div>
                   </div>
                 </div>
           </Card>
@@ -725,19 +805,32 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 pt-0">
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Текущий статус</h3>
-                    <div className="flex gap-4"><span className="opacity-70">Статус:</span><span className="font-medium">{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-70">Статус:</span>
+                      <Tag size="sm" variant="subtle" bg={registered ? "#E6FFF4" : "#FFF7E6"} color={registered ? "#046C4E" : "#7A4F01"} borderRadius="full">
+                        <TagLeftIcon boxSize="12px" as={registered ? Trophy : Clock} />
+                        <TagLabel>{registered === null ? "-" : registered ? "Зарегистрирован" : "Не зарегистрирован"}</TagLabel>
+                      </Tag>
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="opacity-70">Referrer:</span>
                       <span>{referrer ? <a className="inline-flex items-center gap-1 underline" href={explorerAddressUrl(referrer)} target="_blank" rel="noreferrer">{referrer}<ExternalLink size={14} /></a> : "-"}</span>
                       {referrer && <IconButton onClick={() => copy(referrer!)} aria-label="copy-ref"><Copy size={14} /></IconButton>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="opacity-70">Code hash (hex):</span>
+                      <span className="opacity-70">
+                        {registered ? "Реф. код реферера:" : "Мой реф. код:"}
+                      </span>
                       <span className="break-all">{refCodeHex ?? "-"}</span>
                       {refCodeHex && <IconButton onClick={() => copy(refCodeHex!)} aria-label="copy-code"><Copy size={14} /></IconButton>}
                     </div>
                     {registered === false && (
-                      <p className="text-xs text-amber-700">Вы не зарегистрированы по реф.коду. Покупка возможна без реферала.</p>
+                      <Text fontSize="xs" color="gray.500">
+                        {refCodeHex ? "У вас есть собственный реферальный код для привлечения новых пользователей." : "Вы не зарегистрированы по реф.коду и у вас нет собственного кода. Покупка возможна без реферала."}
+                      </Text>
+                    )}
+                    {registered === true && (
+                      <Text fontSize="xs" color="green.600">Вы зарегистрированы по реферальному коду.</Text>
                     )}
                   </div>
                   
@@ -749,7 +842,7 @@ export default function Home() {
                       onClick={onGenerateCode} 
                       disabled={!watcher || loading}
                       colorScheme="purple"
-                      variant="outline"
+                      variant="solid"
                       leftIcon={loading ? <Spinner size="sm" /> : <Code size={16} />}
                       size="lg"
                     >

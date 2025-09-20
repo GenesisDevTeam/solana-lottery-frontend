@@ -776,19 +776,19 @@
       ]
     },
     {
-      "name": "request_on_demand_randomness",
+      "name": "request_randomness_simple",
       "docs": [
-        "Запрос случайности через Switchboard On-Demand VRF"
+        "Запрос случайности через Switchboard On-Demand VRF (упрощённая версия для тестирования)"
       ],
       "discriminator": [
-        146,
-        145,
-        162,
-        229,
-        141,
-        144,
         115,
-        53
+        85,
+        186,
+        104,
+        89,
+        114,
+        157,
+        250
       ],
       "accounts": [
         {
@@ -813,17 +813,36 @@
           }
         },
         {
-          "name": "randomness_account",
-          "writable": true
+          "name": "lottery_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "switchboard_on_demand_program",
-          "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "lottery_state"
+          ]
         },
         {
           "name": "system_program",
@@ -838,19 +857,19 @@
       ]
     },
     {
-      "name": "settle_on_demand_randomness",
+      "name": "settle_round_simple",
       "docs": [
-        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
+        "Завершение раунда с детерминированной генерацией случайности (для тестирования)"
       ],
       "discriminator": [
-        147,
-        4,
-        137,
-        96,
-        249,
-        227,
-        98,
-        48
+        254,
+        78,
+        107,
+        183,
+        241,
+        90,
+        183,
+        186
       ],
       "accounts": [
         {
@@ -934,9 +953,6 @@
           }
         },
         {
-          "name": "randomness_account"
-        },
-        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -945,15 +961,6 @@
         {
           "name": "round_id",
           "type": "u64"
-        },
-        {
-          "name": "randomness",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         }
       ]
     }

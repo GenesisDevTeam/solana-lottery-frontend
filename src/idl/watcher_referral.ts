@@ -1263,19 +1263,6 @@ export type WatcherReferral = {
       ]
     },
     {
-      "name": "referralEscrow",
-      "discriminator": [
-        115,
-        18,
-        69,
-        141,
-        241,
-        51,
-        104,
-        186
-      ]
-    },
-    {
       "name": "referrerProfitForRound",
       "discriminator": [
         14,
@@ -1575,18 +1562,6 @@ export type WatcherReferral = {
           {
             "name": "amount",
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "referralEscrow",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "bump",
-            "type": "u8"
           }
         ]
       }

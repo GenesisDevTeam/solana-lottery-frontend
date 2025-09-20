@@ -782,19 +782,19 @@ export type SolanaLottery = {
       ]
     },
     {
-      "name": "requestOnDemandRandomness",
+      "name": "requestRandomnessSimple",
       "docs": [
-        "Запрос случайности через Switchboard On-Demand VRF"
+        "Запрос случайности через Switchboard On-Demand VRF (упрощённая версия для тестирования)"
       ],
       "discriminator": [
-        146,
-        145,
-        162,
-        229,
-        141,
-        144,
         115,
-        53
+        85,
+        186,
+        104,
+        89,
+        114,
+        157,
+        250
       ],
       "accounts": [
         {
@@ -819,17 +819,36 @@ export type SolanaLottery = {
           }
         },
         {
-          "name": "randomnessAccount",
-          "writable": true
+          "name": "lotteryState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "switchboardOnDemandProgram",
-          "address": "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "lotteryState"
+          ]
         },
         {
           "name": "systemProgram",
@@ -844,19 +863,19 @@ export type SolanaLottery = {
       ]
     },
     {
-      "name": "settleOnDemandRandomness",
+      "name": "settleRoundSimple",
       "docs": [
-        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
+        "Завершение раунда с детерминированной генерацией случайности (для тестирования)"
       ],
       "discriminator": [
-        147,
-        4,
-        137,
-        96,
-        249,
-        227,
-        98,
-        48
+        254,
+        78,
+        107,
+        183,
+        241,
+        90,
+        183,
+        186
       ],
       "accounts": [
         {
@@ -940,9 +959,6 @@ export type SolanaLottery = {
           }
         },
         {
-          "name": "randomnessAccount"
-        },
-        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -951,15 +967,6 @@ export type SolanaLottery = {
         {
           "name": "roundId",
           "type": "u64"
-        },
-        {
-          "name": "randomness",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         }
       ]
     }
