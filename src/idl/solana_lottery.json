@@ -776,19 +776,19 @@
       ]
     },
     {
-      "name": "request_randomness_simple",
+      "name": "request_on_demand_randomness",
       "docs": [
-        "Запрос случайности через Switchboard On-Demand VRF (упрощённая версия для тестирования)"
+        "Простая функция для сохранения VRF состояния (согласно Switchboard On-Demand туториалу)"
       ],
       "discriminator": [
+        146,
+        145,
+        162,
+        229,
+        141,
+        144,
         115,
-        85,
-        186,
-        104,
-        89,
-        114,
-        157,
-        250
+        53
       ],
       "accounts": [
         {
@@ -813,36 +813,39 @@
           }
         },
         {
-          "name": "lottery_state",
+          "name": "vrf_state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  108,
-                  111,
-                  116,
-                  116,
-                  101,
+                  118,
                   114,
-                  121,
+                  102,
                   95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
+                  99,
+                  108,
+                  105,
+                  101,
+                  110,
+                  116
                 ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
               }
             ]
           }
         },
         {
-          "name": "admin",
-          "signer": true,
-          "relations": [
-            "lottery_state"
-          ]
+          "name": "randomness_account"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "system_program",
@@ -857,19 +860,19 @@
       ]
     },
     {
-      "name": "settle_round_simple",
+      "name": "settle_on_demand_randomness",
       "docs": [
-        "Завершение раунда с детерминированной генерацией случайности (для тестирования)"
+        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
       ],
       "discriminator": [
-        254,
-        78,
-        107,
-        183,
-        241,
-        90,
-        183,
-        186
+        147,
+        4,
+        137,
+        96,
+        249,
+        227,
+        98,
+        48
       ],
       "accounts": [
         {
@@ -951,6 +954,330 @@
               }
             ]
           }
+        },
+        {
+          "name": "randomness_account"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "lottery_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "play",
+      "docs": [
+        "Покупка билетов (оплата в SOL)"
+      ],
+      "discriminator": [
+        213,
+        157,
+        193,
+        142,
+        228,
+        56,
+        248,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": [
+            "Escrow аккаунт для хранения SOL раунда (отдельно от PDA с данными)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "purchase",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  117,
+                  114,
+                  99,
+                  104,
+                  97,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              },
+              {
+                "kind": "account",
+                "path": "round.purchase_count",
+                "account": "Round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "watcher_state"
+        },
+        {
+          "name": "user_ref_for_player"
+        },
+        {
+          "name": "referrer_settings_for_player",
+          "writable": true
+        },
+        {
+          "name": "lottery_program"
+        },
+        {
+          "name": "watcher_program",
+          "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf"
+        },
+        {
+          "name": "profit_for_round",
+          "writable": true
+        },
+        {
+          "name": "round_total_profit",
+          "writable": true
+        },
+        {
+          "name": "referral_escrow",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u64"
+        },
+        {
+          "name": "ticket_count",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settle_on_demand_randomness",
+      "docs": [
+        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
+      ],
+      "discriminator": [
+        147,
+        4,
+        137,
+        96,
+        249,
+        227,
+        98,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "lottery_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_escrow",
+          "docs": [
+            "Escrow аккаунт для хранения SOL раунда"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "round_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness_account"
         },
         {
           "name": "system_program",

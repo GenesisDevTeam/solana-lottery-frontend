@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Keypair } from "@solana/web3.js";
 import { useAnchor } from "@/lib/anchor";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { WalletGate } from "@/components/WalletGate";
@@ -29,6 +29,7 @@ import { Settings, Play, Square, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Randomness } from "@switchboard-xyz/on-demand";
 
 export default function AdminPage() {
   const { lottery } = useAnchor();
@@ -207,88 +208,189 @@ export default function AdminPage() {
         const remainingMinutes = Math.ceil(remainingSeconds / 60);
         throw new Error(`Раунд еще не завершился. Осталось: ${remainingMinutes} минут (${remainingSeconds} секунд)`);
       }
+
+      console.log("Создаем Switchboard On-Demand randomness account...");
       
-      // Если есть билеты, нужно найти владельцев для выплат
-      const totalTickets = (round.totalTickets as anchor.BN).toNumber();
+      // Шаг 1: Создаем randomness account через Switchboard SDK
+      const randomnessKeypair = Keypair.generate();
+      const queuePubkey = new PublicKey("EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7"); // devnet queue
       
-      let remainingAccounts: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean; }[] = [];
+      // Создаем Switchboard program для On-Demand
+      const SWITCHBOARD_ON_DEMAND_PROGRAM_ID = new PublicKey("Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2");
+      const switchboardProgram = new anchor.Program(
+        { address: SWITCHBOARD_ON_DEMAND_PROGRAM_ID.toBase58() } as anchor.Idl,
+        lottery.provider
+      );
       
-      if (totalTickets > 0) {
-        // Получаем все покупки для поиска победителей после генерации случайности в контракте
-        const purchaseCount = (round.purchaseCount as anchor.BN).toNumber();
-        const allPurchases: Array<{ pda: PublicKey; user: PublicKey; start: number; end: number }> = [];
-        
-        for (let idx = 0; idx < purchaseCount; idx++) {
-          const purchasePda = PublicKey.findProgramAddressSync([
-            Buffer.from("purchase"),
-            new anchor.BN(roundId).toArrayLike(Buffer, "le", 8),
-            new anchor.BN(idx).toArrayLike(Buffer, "le", 8),
-          ], lottery.programId)[0];
-          
-          try {
-            const p = await lottery.account.purchase.fetch(purchasePda);
-            const end = (p.cumulativeTickets as anchor.BN).toNumber();
-            const start = end - (p.ticketCount as anchor.BN).toNumber() + 1;
-            allPurchases.push({ pda: purchasePda, user: p.user as PublicKey, start, end });
-          } catch {}
-        }
-        
-        // Передаём все покупки и пользователей как remaining accounts
-        // Контракт сам определит победителей и сделает выплаты
-        const watcherProgramId = new PublicKey("j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf");
-        const [referralEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId);
-        const [roundTotalProfitPda] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId);
-        
-        remainingAccounts = [
-          // Сначала referral accounts
-          { pubkey: referralEscrowPda, isSigner: false, isWritable: true },
-          { pubkey: roundTotalProfitPda, isSigner: false, isWritable: false },
-          // Затем все покупки и пользователи (контракт сам выберет победителей)
-          ...allPurchases.flatMap(p => [
-            { pubkey: p.pda, isSigner: false, isWritable: false },
-            { pubkey: p.user, isSigner: false, isWritable: true },
-          ]),
-        ];
+      // Создаем randomness account через Switchboard SDK
+      const [randomness, createIx] = await Randomness.create(
+        switchboardProgram,
+        randomnessKeypair,
+        queuePubkey
+      );
+      
+      // Выполняем создание randomness account
+      const createTx = new anchor.web3.Transaction().add(createIx);
+      
+      if (lottery.provider.sendAndConfirm) {
+        await lottery.provider.sendAndConfirm(createTx, [randomnessKeypair]);
       } else {
-        // Если билетов нет, передаём только referral accounts
-        const watcherProgramId = new PublicKey("j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf");
-        const [referralEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId);
-        const [roundTotalProfitPda] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId);
-        
-        remainingAccounts = [
-          { pubkey: referralEscrowPda, isSigner: false, isWritable: true },
-          { pubkey: roundTotalProfitPda, isSigner: false, isWritable: false },
-        ];
+        throw new Error("Метод sendAndConfirm недоступен");
+      }
+      console.log("Randomness account создан:", randomnessKeypair.publicKey.toBase58());
+      
+      // Шаг 2: Commit к randomness account (реальный Switchboard VRF)
+      console.log("Выполняем commit к Switchboard randomness account...");
+      
+      const commitIx = await randomness.commitIx(queuePubkey);
+      const commitTx = new anchor.web3.Transaction().add(commitIx);
+      
+      if (lottery.provider.sendAndConfirm) {
+        await lottery.provider.sendAndConfirm(commitTx, []);
+      } else {
+        throw new Error("Метод sendAndConfirm недоступен");
       }
       
-      const [roundEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("round_escrow"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+      console.log("✅ Commit выполнен");
       
-      // Используем упрощённую функцию settle_round_simple
-      const settleAccounts = {
-        lotteryState,
+      // Сохраняем ссылку на randomness account в нашем контракте
+      const [vrfStatePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vrf_client"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], 
+        lottery.programId
+      );
+      
+      const requestAccounts = {
         round: roundPda,
-        roundEscrow: roundEscrowPda,
+        vrfState: vrfStatePda,
+        randomnessAccount: randomnessKeypair.publicKey,
+        payer: lottery.provider.publicKey!,
         systemProgram: anchor.web3.SystemProgram.programId,
       };
       
       await lottery.methods
-        .settleRoundSimple(new anchor.BN(roundId))
+        .requestOnDemandRandomness(new anchor.BN(roundId))
+        .accounts(requestAccounts as never)
+        .rpc();
+      
+      console.log("✅ Ссылка на randomness account сохранена");
+      
+      console.log("Случайность запрошена, ожидаем получение...");
+      
+      // Шаг 3: Ждем следующий слот для reveal
+      console.log("Ожидаем следующий слот для reveal...");
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Ждем ~3 секунды
+      
+      // Шаг 4: Reveal randomness
+      console.log("Выполняем reveal randomness...");
+      
+      const revealIx = await randomness.revealIx();
+      const revealTx = new anchor.web3.Transaction().add(revealIx);
+      
+      if (lottery.provider.sendAndConfirm) {
+        await lottery.provider.sendAndConfirm(revealTx, []);
+      } else {
+        throw new Error("Метод sendAndConfirm недоступен");
+      }
+      
+      console.log("✅ Reveal выполнен, проверяем готовность randomness...");
+      
+      // Проверяем что randomness готов
+      let randomnessReady = false;
+      const maxAttempts = 15;
+      
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        try {
+          const randomnessData = await randomness.loadData();
+          if (randomnessData && randomnessData.value && !randomnessData.value.every((byte: number) => byte === 0)) {
+            randomnessReady = true;
+            console.log("✅ Randomness получен:", Array.from(randomnessData.value as Uint8Array).slice(0, 8).map(b => b.toString(16)).join(''));
+            break;
+          }
+        } catch {
+          console.log(`Попытка ${i + 1}: randomness еще не готов`);
+        }
+      }
+      
+      if (!randomnessReady) {
+        throw new Error("Switchboard randomness не готов после reveal. Попробуйте позже.");
+      }
+      
+      // Находим владельцев билетов для выплат
+      const purchaseCount = (round.purchaseCount as anchor.BN).toNumber();
+      const purchases: PublicKey[] = [];
+      const payees: PublicKey[] = [];
+      
+      // Получаем все покупки для передачи в контракт
+      for (let i = 0; i < purchaseCount; i++) {
+        const purchasePda = PublicKey.findProgramAddressSync([
+          Buffer.from("purchase"),
+          new anchor.BN(roundId).toArrayLike(Buffer, "le", 8),
+          new anchor.BN(i).toArrayLike(Buffer, "le", 8),
+        ], lottery.programId)[0];
+        
+        try {
+          const p = await lottery.account.purchase.fetch(purchasePda);
+          purchases.push(purchasePda);
+          payees.push(p.user as PublicKey);
+        } catch {
+          // Если покупка не существует, пропускаем
+        }
+      }
+      
+      // Получаем правильные PDA для referral программы
+      const watcherProgramId = new PublicKey("j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf");
+      const [referralEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("referral_escrow")], watcherProgramId);
+      const [roundTotalProfitPda] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId);
+      const [roundEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("round_escrow"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
+      
+      const remainingAccounts = [
+        // Правильные PDA от referral программы
+        { pubkey: referralEscrowPda, isSigner: false, isWritable: true },
+        { pubkey: roundTotalProfitPda, isSigner: false, isWritable: false },
+        // Добавляем все покупки и получателей
+        ...purchases.flatMap((pk, i) => ([
+          { pubkey: pk, isSigner: false, isWritable: false },
+          { pubkey: payees[i], isSigner: false, isWritable: true },
+        ])),
+      ];
+      
+      // Шаг 4: Завершаем раунд с использованием revealed randomness
+      console.log("Завершаем раунд с распределением призов...");
+      
+      const settleAccounts = {
+        lotteryState,
+        round: roundPda,
+        roundEscrow: roundEscrowPda,
+        randomnessAccount: randomnessKeypair.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      };
+      
+      console.log("Завершаем раунд с VRF randomness...");
+      
+      await lottery.methods
+        .settleOnDemandRandomness(new anchor.BN(roundId))
         .accounts(settleAccounts as never)
         .remainingAccounts(remainingAccounts)
         .rpc();
       
       toast({
         title: "Раунд завершен",
-        description: `Раунд #${roundId} успешно завершен с детерминированной генерацией случайности`,
+        description: `Раунд #${roundId} успешно завершен с использованием Switchboard On-Demand VRF`,
         status: "success",
         duration: 5000,
         isClosable: true,
       });
       
+      // Обновляем состояние страницы
+      window.location.reload();
+      
     } catch (e) {
       const err = e as Error & { message?: string };
       const errorMsg = err.message || "Ошибка завершения раунда";
       setError(errorMsg);
+      console.error("Ошибка завершения раунда:", e);
       toast({
         title: "Ошибка",
         description: errorMsg,
@@ -512,7 +614,7 @@ export default function AdminPage() {
                        canFinishRound ? "Завершить раунд" : "Ожидание окончания времени"}
                     </Button>
                     <Text fontSize="xs" color="gray.500" textAlign="center">
-                      Раунд будет завершен с детерминированной генерацией случайности на основе timestamp
+                      Раунд будет завершен с использованием Switchboard On-Demand VRF для честной генерации победителей
                     </Text>
                   </div>
                 </div>
