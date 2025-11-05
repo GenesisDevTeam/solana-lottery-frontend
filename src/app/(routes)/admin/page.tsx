@@ -29,7 +29,7 @@ import { Settings, Play, Square, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { Randomness } from "@switchboard-xyz/on-demand";
+// import { Randomness } from "@switchboard-xyz/on-demand"; // Временно отключаем для отладки
 
 export default function AdminPage() {
   const { lottery } = useAnchor();
@@ -185,6 +185,9 @@ export default function AdminPage() {
 
   const finishRoundWithRandomness = async () => {
     if (!lottery) return;
+    
+    console.log("🎢 Начинаем процесс завершения раунда...");
+    
     try {
       setLoading(true);
       setError(null);
@@ -196,6 +199,13 @@ export default function AdminPage() {
       
       // Проверяем состояние раунда
       const round = await lottery.account.round.fetch(roundPda);
+      console.log("Состояние раунда:", {
+        isFinished: round.isFinished,
+        purchaseCount: round.purchaseCount?.toString(),
+        totalTickets: round.totalTickets?.toString(),
+        pot: round.pot?.toString()
+      });
+      
       if (round.isFinished) {
         throw new Error("Раунд уже завершен");
       }
@@ -303,13 +313,23 @@ export default function AdminPage() {
         
         try {
           const randomnessData = await randomness.loadData();
-          if (randomnessData && randomnessData.value && !randomnessData.value.every((byte: number) => byte === 0)) {
-            randomnessReady = true;
-            console.log("✅ Randomness получен:", Array.from(randomnessData.value as Uint8Array).slice(0, 8).map(b => b.toString(16)).join(''));
-            break;
+          console.log(`Попытка ${i + 1}: randomnessData:`, randomnessData);
+          
+          if (randomnessData && randomnessData.value) {
+            console.log("Value type:", typeof randomnessData.value);
+            console.log("Value array check:", Array.isArray(randomnessData.value));
+            
+            if (Array.isArray(randomnessData.value) && randomnessData.value.length === 32 && !randomnessData.value.every((byte: number) => byte === 0)) {
+              randomnessReady = true;
+              const hexValue = randomnessData.value.slice(0, 8).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+              console.log("✅ Randomness получен:", hexValue);
+              break;
+            } else if (randomnessData.value && !Array.isArray(randomnessData.value)) {
+              console.log("⚠️ Неожиданный формат value:", typeof randomnessData.value, randomnessData.value);
+            }
           }
-        } catch {
-          console.log(`Попытка ${i + 1}: randomness еще не готов`);
+        } catch (error) {
+          console.log(`Попытка ${i + 1}: ошибка загрузки randomness:`, error);
         }
       }
       
@@ -318,9 +338,11 @@ export default function AdminPage() {
       }
       
       // Находим владельцев билетов для выплат
-      const purchaseCount = (round.purchaseCount as anchor.BN).toNumber();
+      const purchaseCount = round.purchaseCount ? (round.purchaseCount as anchor.BN).toNumber() : 0;
       const purchases: PublicKey[] = [];
       const payees: PublicKey[] = [];
+      
+      console.log("Покупок в раунде:", purchaseCount);
       
       // Получаем все покупки для передачи в контракт
       for (let i = 0; i < purchaseCount; i++) {
@@ -345,15 +367,18 @@ export default function AdminPage() {
       const [roundTotalProfitPda] = PublicKey.findProgramAddressSync([Buffer.from("round_profit"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], watcherProgramId);
       const [roundEscrowPda] = PublicKey.findProgramAddressSync([Buffer.from("round_escrow"), new anchor.BN(roundId).toArrayLike(Buffer, "le", 8)], lottery.programId);
       
+      // Проверяем что у нас есть покупки
+      console.log("Найдено покупок:", purchases.length);
+      
       const remainingAccounts = [
         // Правильные PDA от referral программы
         { pubkey: referralEscrowPda, isSigner: false, isWritable: true },
         { pubkey: roundTotalProfitPda, isSigner: false, isWritable: false },
-        // Добавляем все покупки и получателей
-        ...purchases.flatMap((pk, i) => ([
+        // Добавляем все покупки и получателей (с защитой)
+        ...(purchases && purchases.length > 0 ? purchases.flatMap((pk, i) => ([
           { pubkey: pk, isSigner: false, isWritable: false },
-          { pubkey: payees[i], isSigner: false, isWritable: true },
-        ])),
+          { pubkey: payees[i] || anchor.web3.SystemProgram.programId, isSigner: false, isWritable: true },
+        ])) : []),
       ];
       
       // Шаг 4: Завершаем раунд с использованием revealed randomness
@@ -387,15 +412,21 @@ export default function AdminPage() {
       window.location.reload();
       
     } catch (e) {
-      const err = e as Error & { message?: string };
+      const err = e as Error & { message?: string; stack?: string };
       const errorMsg = err.message || "Ошибка завершения раунда";
       setError(errorMsg);
-      console.error("Ошибка завершения раунда:", e);
+      
+      // Подробное логирование ошибки
+      console.error("❌ Ошибка завершения раунда:");
+      console.error("Message:", err.message);
+      console.error("Stack:", err.stack);
+      console.error("Full error:", e);
+      
       toast({
         title: "Ошибка",
         description: errorMsg,
         status: "error",
-        duration: 5000,
+        duration: 10000,
         isClosable: true,
       });
     } finally {
