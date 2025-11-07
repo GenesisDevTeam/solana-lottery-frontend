@@ -161,14 +161,14 @@ export function decodeEvent(
     if (!eventName) return null;
     // TODO: Implement actual decoding using Anchor or borsh
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return { discriminator, data: {} as any };
+    return { discriminator: discriminator as any, data: {} as any };
   }
   if (programId === WATCHER_PROGRAM_ID) {
     const eventName = getWatcherEventName(discriminator);
     if (!eventName) return null;
     // TODO: Implement actual decoding using Anchor or borsh
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return { discriminator, data: {} as any };
+    return { discriminator: discriminator as any, data: {} as any };
   }
   return null;
 }

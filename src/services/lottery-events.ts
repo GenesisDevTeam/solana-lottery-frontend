@@ -6,6 +6,7 @@ import {
   RoundFinishedEvent,
   RoundCanceledEvent,
 } from '@/types/webhook-events';
+import { eventBroadcaster } from '@/lib/event-broadcaster';
 
 interface TransactionMetadata {
   signature: string;
@@ -72,6 +73,7 @@ async function handleNewRoundInitialized(
   };
   
   console.log(`[${timestamp}] [LOTTERY] [NewRoundInitialized]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'lottery', eventName: 'NewRoundInitialized', ...logEntry });
 }
 
 async function handleTicketPurchased(
@@ -95,6 +97,7 @@ async function handleTicketPurchased(
   };
   
   console.log(`[${timestamp}] [LOTTERY] [TicketPurchased]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'lottery', eventName: 'TicketPurchased', ...logEntry });
 }
 
 async function handleRandomnessRequested(
@@ -117,6 +120,7 @@ async function handleRandomnessRequested(
   };
   
   console.log(`[${timestamp}] [LOTTERY] [RandomnessRequested]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'lottery', eventName: 'RandomnessRequested', ...logEntry });
 }
 
 async function handleRandomnessSettled(
@@ -138,6 +142,7 @@ async function handleRandomnessSettled(
   };
   
   console.log(`[${timestamp}] [LOTTERY] [RandomnessSettled]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'lottery', eventName: 'RandomnessSettled', ...logEntry });
 }
 
 async function handleRoundFinished(
@@ -158,6 +163,7 @@ async function handleRoundFinished(
   };
   
   console.log(`[${timestamp}] [LOTTERY] [RoundFinished]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'lottery', eventName: 'RoundFinished', ...logEntry });
 }
 
 async function handleRoundCanceled(
@@ -177,4 +183,5 @@ async function handleRoundCanceled(
   };
   
   console.log(`[${timestamp}] [LOTTERY] [RoundCanceled]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'lottery', eventName: 'RoundCanceled', ...logEntry });
 }

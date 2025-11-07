@@ -7,6 +7,7 @@ import {
   RegistrationStatsViewEvent,
   RoundTotalProfitViewEvent,
 } from '@/types/webhook-events';
+import { eventBroadcaster } from '@/lib/event-broadcaster';
 
 interface TransactionMetadata {
   signature: string;
@@ -79,6 +80,7 @@ async function handleProfitUpdated(
   };
   
   console.log(`[${timestamp}] [WATCHER] [ProfitUpdated]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'watcher', eventName: 'ProfitUpdated', ...logEntry });
 }
 
 async function handleProfitWithdrawn(
@@ -100,6 +102,7 @@ async function handleProfitWithdrawn(
   };
   
   console.log(`[${timestamp}] [WATCHER] [ProfitWithdrawn]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'watcher', eventName: 'ProfitWithdrawn', ...logEntry });
 }
 
 async function handleReferrerForUser(
@@ -123,6 +126,7 @@ async function handleReferrerForUser(
   };
   
   console.log(`[${timestamp}] [WATCHER] [ReferrerForUser]`, JSON.stringify(logEntry, null, 2));
+  eventBroadcaster.broadcast({ type: 'watcher', eventName: 'ReferrerForUser', ...logEntry });
 }
 
 async function handleReferrerProfitView(

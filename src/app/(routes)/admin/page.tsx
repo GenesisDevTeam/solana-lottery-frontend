@@ -29,7 +29,7 @@ import { Settings, Play, Square, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-// import { Randomness } from "@switchboard-xyz/on-demand"; // Временно отключаем для отладки
+import { Randomness } from "@switchboard-xyz/on-demand";
 
 export default function AdminPage() {
   const { lottery } = useAnchor();

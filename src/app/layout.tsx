@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SolanaProviders } from "./providers/solana-wallet";
 import { ChakraProviders } from "./providers/chakra";
+import { Toaster } from "@/components/ui/sonner";
+import { EventNotifications } from "@/components/EventNotifications";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +30,11 @@ export default function RootLayout({
     <html suppressHydrationWarning lang="ru">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ChakraProviders>
-          <SolanaProviders>{children}</SolanaProviders>
+          <SolanaProviders>
+            {children}
+            <EventNotifications />
+            <Toaster />
+          </SolanaProviders>
         </ChakraProviders>
       </body>
     </html>
