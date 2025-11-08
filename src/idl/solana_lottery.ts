@@ -5,10 +5,10 @@
  * IDL can be found at `target/idl/solana_lottery.json`.
  */
 export type SolanaLottery = {
-  "address": "AHw5KYiCeU2Bj2KvQR6YcCAcQcqusp58mz3MRyiT61M9",
+  "address": "7V4NGWsmQhdUrNtnmUN61Y8Edrq2mAyHt1gLy4XXrqA",
   "metadata": {
     "name": "solanaLottery",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },
@@ -16,7 +16,7 @@ export type SolanaLottery = {
     {
       "name": "cancelRound",
       "docs": [
-        "Отмена раунда при нуле покупок (закрытие аккаунта раунда)"
+        "Cancel a round if there are zero purchases (close the round account)"
       ],
       "discriminator": [
         82,
@@ -77,12 +77,23 @@ export type SolanaLottery = {
           }
         },
         {
+          "name": "roundEscrow",
+          "docs": [
+            "Escrow account to hold round SOL (закрываем вместе с раундом)"
+          ],
+          "writable": true
+        },
+        {
           "name": "admin",
           "writable": true,
           "signer": true,
           "relations": [
             "lotteryState"
           ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -95,7 +106,7 @@ export type SolanaLottery = {
     {
       "name": "claimAdminFees",
       "docs": [
-        "Вывод комиссий администратором (SOL)"
+        "Withdraw fees by the owner (SOL)"
       ],
       "discriminator": [
         68,
@@ -149,94 +160,10 @@ export type SolanaLottery = {
       "args": []
     },
     {
-      "name": "consumeRandomness",
-      "docs": [
-        "Callback от Switchboard: сохраняем рандом и генерируем winning_tickets"
-      ],
-      "discriminator": [
-        190,
-        217,
-        49,
-        162,
-        99,
-        26,
-        73,
-        234
-      ],
-      "accounts": [
-        {
-          "name": "round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "roundId"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vrfState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  99,
-                  108,
-                  105,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "roundId"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vrf"
-        }
-      ],
-      "args": [
-        {
-          "name": "roundId",
-          "type": "u64"
-        },
-        {
-          "name": "randomness",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "finishRound",
       "docs": [
-        "Завершение раунда: распределение SOL по победителям и комиссия"
+        "Finish round: distribute SOL to winners and the fee",
+        "NOTE: Используется когда победители уже были определены off-chain"
       ],
       "discriminator": [
         23,
@@ -300,7 +227,7 @@ export type SolanaLottery = {
         {
           "name": "roundEscrow",
           "docs": [
-            "Escrow аккаунт для хранения SOL раунда"
+            "Escrow account to hold round SOL"
           ],
           "writable": true,
           "pda": {
@@ -345,92 +272,6 @@ export type SolanaLottery = {
         {
           "name": "roundId",
           "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "initVrfClient",
-      "docs": [
-        "Инициализация VRF-клиента для раунда"
-      ],
-      "discriminator": [
-        4,
-        73,
-        63,
-        122,
-        161,
-        36,
-        223,
-        68
-      ],
-      "accounts": [
-        {
-          "name": "round",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  111,
-                  117,
-                  110,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "roundId"
-              }
-            ]
-          }
-        },
-        {
-          "name": "vrfState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  99,
-                  108,
-                  105,
-                  101,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "roundId"
-              }
-            ]
-          }
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "roundId",
-          "type": "u64"
-        },
-        {
-          "name": "vrf",
-          "type": "pubkey"
         }
       ]
     },
@@ -559,7 +400,7 @@ export type SolanaLottery = {
         {
           "name": "roundEscrow",
           "docs": [
-            "Escrow аккаунт для хранения SOL раунда"
+            "Escrow account to hold round SOL"
           ],
           "writable": true,
           "pda": {
@@ -634,7 +475,7 @@ export type SolanaLottery = {
     {
       "name": "play",
       "docs": [
-        "Покупка билетов (оплата в SOL)"
+        "Buy tickets (paid in SOL)"
       ],
       "discriminator": [
         213,
@@ -647,6 +488,31 @@ export type SolanaLottery = {
         150
       ],
       "accounts": [
+        {
+          "name": "lotteryState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
         {
           "name": "round",
           "writable": true,
@@ -672,7 +538,7 @@ export type SolanaLottery = {
         {
           "name": "roundEscrow",
           "docs": [
-            "Escrow аккаунт для хранения SOL раунда (отдельно от PDA с данными)"
+            "Escrow account to hold round SOL (separate from data PDA)"
           ],
           "writable": true,
           "pda": {
@@ -747,11 +613,8 @@ export type SolanaLottery = {
           "writable": true
         },
         {
-          "name": "lotteryProgram"
-        },
-        {
           "name": "watcherProgram",
-          "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf"
+          "address": "DEZuxh9EX8XaXb7AcsQJq9JxY3aN8huHSvTiP35AZGP4"
         },
         {
           "name": "profitForRound",
@@ -784,7 +647,7 @@ export type SolanaLottery = {
     {
       "name": "requestOnDemandRandomness",
       "docs": [
-        "Простая функция для сохранения VRF состояния (согласно Switchboard On-Demand туториалу)"
+        "Persist VRF state with validated Switchboard randomness account"
       ],
       "discriminator": [
         146,
@@ -797,6 +660,31 @@ export type SolanaLottery = {
         53
       ],
       "accounts": [
+        {
+          "name": "lotteryState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  116,
+                  116,
+                  101,
+                  114,
+                  121,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
         {
           "name": "round",
           "pda": {
@@ -854,6 +742,13 @@ export type SolanaLottery = {
           "signer": true
         },
         {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "lotteryState"
+          ]
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -868,7 +763,9 @@ export type SolanaLottery = {
     {
       "name": "settleOnDemandRandomness",
       "docs": [
-        "Получение случайности из Switchboard On-Demand, генерация победителей и завершение раунда с выплатами"
+        "Read randomness from Switchboard On-Demand, generate winners, and finish the round with payouts",
+        "SECURITY NOTE: Админ выбирает randomness account и вызывает settle.",
+        "Это централизованная модель доверия к администратору."
       ],
       "discriminator": [
         147,
@@ -932,7 +829,7 @@ export type SolanaLottery = {
         {
           "name": "roundEscrow",
           "docs": [
-            "Escrow аккаунт для хранения SOL раунда"
+            "Escrow account to hold round SOL"
           ],
           "writable": true,
           "pda": {
@@ -952,6 +849,32 @@ export type SolanaLottery = {
                   114,
                   111,
                   119
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "roundId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrfState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  99,
+                  108,
+                  105,
+                  101,
+                  110,
+                  116
                 ]
               },
               {
@@ -1046,6 +969,19 @@ export type SolanaLottery = {
       ]
     },
     {
+      "name": "prizePaid",
+      "discriminator": [
+        6,
+        20,
+        237,
+        248,
+        90,
+        77,
+        102,
+        211
+      ]
+    },
+    {
       "name": "randomnessRequested",
       "discriminator": [
         10,
@@ -1115,47 +1051,52 @@ export type SolanaLottery = {
     {
       "code": 6000,
       "name": "invalidRoundTiming",
-      "msg": "Неверное время раунда"
+      "msg": "Invalid round timing"
     },
     {
       "code": 6001,
       "name": "invalidTicketPrice",
-      "msg": "Неверная цена билета"
+      "msg": "Invalid ticket price"
     },
     {
       "code": 6002,
       "name": "invalidFee",
-      "msg": "Неверная комиссия"
+      "msg": "Invalid fee"
     },
     {
       "code": 6003,
       "name": "invalidRewardSharing",
-      "msg": "Неверное распределение наград"
+      "msg": "Invalid reward sharing configuration"
     },
     {
       "code": 6004,
       "name": "roundNotInProgress",
-      "msg": "Раунд не в процессе"
+      "msg": "Round not in progress"
     },
     {
       "code": 6005,
       "name": "roundNotFinished",
-      "msg": "Раунд не завершен"
+      "msg": "Round not finished"
     },
     {
       "code": 6006,
       "name": "unauthorized",
-      "msg": "Нет авторизации"
+      "msg": "unauthorized"
     },
     {
       "code": 6007,
       "name": "overflow",
-      "msg": ""
+      "msg": "overflow"
     },
     {
       "code": 6008,
       "name": "roundHasPurchases",
-      "msg": "Нельзя отменить раунд: есть покупки"
+      "msg": "Cannot cancel round: purchases exist"
+    },
+    {
+      "code": 6009,
+      "name": "alreadyConsumed",
+      "msg": "Winners already generated"
     }
   ],
   "types": [
@@ -1207,6 +1148,30 @@ export type SolanaLottery = {
           {
             "name": "ticketPrice",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "prizePaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "roundId",
+            "type": "u64"
+          },
+          {
+            "name": "ticket",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
           }
         ]
       }
@@ -1432,3 +1397,5 @@ export type SolanaLottery = {
     }
   ]
 };
+
+export {  };

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/watcher_referral.json`.
  */
 export type WatcherReferral = {
-  "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf",
+  "address": "4by2gR1W9S4fbiAWUEEy2XMY5B7TUC8aiELYi5ZnGdC9",
   "metadata": {
     "name": "watcherReferral",
     "version": "0.1.0",
@@ -720,7 +720,7 @@ export type WatcherReferral = {
           }
         },
         {
-          "name": "caller"
+          "name": "authority"
         },
         {
           "name": "userRefForPlayer",
@@ -1120,7 +1120,7 @@ export type WatcherReferral = {
     {
       "name": "withdrawProfitForRound",
       "docs": [
-        "Вывод профита за конкретный раунд из escrow на кошелёк реферера"
+        "Withdraw profit for a specific round from escrow to the referrer's wallet"
       ],
       "discriminator": [
         241,
@@ -1438,32 +1438,37 @@ export type WatcherReferral = {
     {
       "code": 6000,
       "name": "unauthorized",
-      "msg": "Нет авторизации"
+      "msg": "unauthorized"
     },
     {
       "code": 6001,
       "name": "alreadyRegistered",
-      "msg": "Уже зарегистрирован"
+      "msg": "Already registered"
     },
     {
       "code": 6002,
       "name": "referralLimitExceeded",
-      "msg": "Превышен дневной лимит для кода"
+      "msg": "Daily limit for the code exceeded"
     },
     {
       "code": 6003,
       "name": "invalidPercentage",
-      "msg": "Неверный процент"
+      "msg": "Invalid percentage"
     },
     {
       "code": 6004,
       "name": "invalidLimit",
-      "msg": "Неверный лимит"
+      "msg": "Invalid limit"
     },
     {
       "code": 6005,
       "name": "insufficientEscrow",
-      "msg": "Недостаточно средств в escrow"
+      "msg": "Insufficient escrow balance"
+    },
+    {
+      "code": 6006,
+      "name": "insufficientAmount",
+      "msg": "Amount below minimum withdrawal threshold"
     }
   ],
   "types": [
@@ -1836,3 +1841,5 @@ export type WatcherReferral = {
     }
   ]
 };
+
+export {  };

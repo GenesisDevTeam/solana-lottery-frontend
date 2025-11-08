@@ -1,5 +1,5 @@
 {
-  "address": "j9RyfMTz4dc9twnFCUZLJzMmhacUqTFHQkCXr7uDpQf",
+  "address": "4by2gR1W9S4fbiAWUEEy2XMY5B7TUC8aiELYi5ZnGdC9",
   "metadata": {
     "name": "watcher_referral",
     "version": "0.1.0",
@@ -714,7 +714,7 @@
           }
         },
         {
-          "name": "caller"
+          "name": "authority"
         },
         {
           "name": "user_ref_for_player",
@@ -1114,7 +1114,7 @@
     {
       "name": "withdraw_profit_for_round",
       "docs": [
-        "Вывод профита за конкретный раунд из escrow на кошелёк реферера"
+        "Withdraw profit for a specific round from escrow to the referrer's wallet"
       ],
       "discriminator": [
         241,
@@ -1432,32 +1432,37 @@
     {
       "code": 6000,
       "name": "Unauthorized",
-      "msg": "Нет авторизации"
+      "msg": "Unauthorized"
     },
     {
       "code": 6001,
       "name": "AlreadyRegistered",
-      "msg": "Уже зарегистрирован"
+      "msg": "Already registered"
     },
     {
       "code": 6002,
       "name": "ReferralLimitExceeded",
-      "msg": "Превышен дневной лимит для кода"
+      "msg": "Daily limit for the code exceeded"
     },
     {
       "code": 6003,
       "name": "InvalidPercentage",
-      "msg": "Неверный процент"
+      "msg": "Invalid percentage"
     },
     {
       "code": 6004,
       "name": "InvalidLimit",
-      "msg": "Неверный лимит"
+      "msg": "Invalid limit"
     },
     {
       "code": 6005,
       "name": "InsufficientEscrow",
-      "msg": "Недостаточно средств в escrow"
+      "msg": "Insufficient escrow balance"
+    },
+    {
+      "code": 6006,
+      "name": "InsufficientAmount",
+      "msg": "Amount below minimum withdrawal threshold"
     }
   ],
   "types": [
