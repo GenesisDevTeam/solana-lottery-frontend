@@ -31,8 +31,8 @@ import { useEffect } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import {
   Randomness,
-  ON_DEMAND_DEVNET_QUEUE_PDA,
-  ON_DEMAND_DEVNET_PID,
+  getDefaultQueue,
+  getProgramId,
 } from "@switchboard-xyz/on-demand";
 
 export default function AdminPage() {
@@ -275,10 +275,23 @@ export default function AdminPage() {
 
       // Шаг 1: Создаем randomness account через Switchboard SDK
       const randomnessKeypair = Keypair.generate();
+      const queue = await getDefaultQueue(
+        lottery.provider.connection.rpcEndpoint
+      );
+      console.log("Queue account", queue.pubkey.toString());
+      try {
+        await queue.loadData();
+      } catch (err) {
+        console.error(
+          "Queue not found, ensure you are using devnet in your env"
+        );
+        process.exit(1);
+      }
 
       // Создаем Switchboard program для On-Demand
+      const sbProgramId = await getProgramId(lottery.provider.connection);
       const switchboardProgram = await anchor.Program.at(
-        ON_DEMAND_DEVNET_PID,
+        sbProgramId,
         lottery.provider
       );
 
@@ -286,7 +299,7 @@ export default function AdminPage() {
       const [randomness, createIx] = await Randomness.create(
         switchboardProgram,
         randomnessKeypair,
-        ON_DEMAND_DEVNET_QUEUE_PDA
+        queue.pubkey
       );
 
       // Выполняем создание randomness account
@@ -305,7 +318,7 @@ export default function AdminPage() {
       // Шаг 2: Commit к randomness account (реальный Switchboard VRF)
       console.log("Выполняем commit к Switchboard randomness account...");
 
-      const commitIx = await randomness.commitIx(ON_DEMAND_DEVNET_QUEUE_PDA);
+      const commitIx = await randomness.commitIx(queue.pubkey);
       const commitTx = new anchor.web3.Transaction().add(commitIx);
 
       if (lottery.provider.sendAndConfirm) {
